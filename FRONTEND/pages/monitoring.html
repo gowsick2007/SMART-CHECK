@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Attendance — Live Monitoring</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .monitoring-wrapper {
+      max-width: 900px;
+      margin: 3rem auto;
+      padding: 0 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+    
+    .status-card {
+      background: rgba(10, 15, 30, 0.6);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 24px;
+      padding: 3rem;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+    
+    .monitoring-pulse {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 2rem;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.2), transparent);
+      border: 2px solid var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 30px rgba(34, 211, 238, 0.3);
+    }
+    
+    .pulse-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid var(--accent-cyan);
+      animation: pulseAnim 3s infinite ease-out;
+    }
+    .pulse-ring:nth-child(2) { animation-delay: 1s; }
+    .pulse-ring:nth-child(3) { animation-delay: 2s; }
+    
+    @keyframes pulseAnim {
+      0% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+    
+    .monitoring-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--accent-cyan);
+      margin-bottom: 1rem;
+    }
+    
+    .monitoring-subtitle {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      margin-bottom: 2.5rem;
+    }
+    
+    .log-container {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 16px;
+      padding: 1.5rem;
+      max-height: 250px;
+      overflow-y: auto;
+      text-align: left;
+      font-family: monospace;
+      font-size: 0.95rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .log-entry { margin-bottom: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; }
+    .log-time { color: var(--accent-blue); font-weight: bold; margin-right: 0.5rem; }
+    .log-msg.info { color: var(--text-primary); }
+    .log-msg.success { color: var(--accent-green); }
+    .log-msg.error { color: var(--accent-red); }
+    .log-msg.warning { color: var(--accent-orange); }
+
+    /* Hidden camera for background verification */
+    #hidden-camera { display: none; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div style="display: flex; align-items: center; gap: 1.5rem;">
+    <a class="navbar-brand" href="/dashboard"> Smart<span>Attendance</span></a>
+    <div id="top-left-location-status" class="top-location-status" style="display: none; align-items: center; gap: 0.6rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; color: var(--accent-green); font-weight: 600;">
+      <div class="glowing-green-dot" style="width: 8px; height: 8px; background-color: var(--accent-green); border-radius: 50%; box-shadow: 0 0 8px var(--accent-green); animation: blink 1.5s infinite;"></div>
+      <span id="top-left-location-text">Monitoring Active</span>
+    </div>
+  </div>
+  <div class="nav-links">
+    <a href="/dashboard"  class="nav-link">Dashboard</a>
+    <a href="/monitoring" class="nav-link active">Monitoring</a>
+    <a href="/history"    class="nav-link">History</a>
+    <a href="/profile"    class="nav-link">Profile</a>
+    <div class="nav-avatar" id="nav-avatar" title="Logout" onclick="handleLogout()"></div>
+  </div>
+</nav>
+
+<div id="toast-container"></div>
+
+<div class="page-wrapper monitoring-wrapper">
+  <a href="/dashboard" class="back-nav-btn" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); text-decoration: none; font-weight: 600; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); margin-bottom: 1rem;">← Back to Dashboard</a>
+
+  <div class="status-card">
+    <div class="monitoring-pulse">
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring"></div>
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+    </div>
+    
+    <div class="monitoring-title">Live Auto Monitoring</div>
+    <div class="monitoring-subtitle">System will automatically verify your boundary and face every 30 minutes. Leave this page open to remain active.</div>
+    
+    <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem;">
+      <button class="btn btn-primary" onclick="triggerPeriodicCheck()" id="manual-check-btn">Run Verification Now</button>
+      <button class="btn btn-ghost" onclick="toggleMonitoring()" id="toggle-monitor-btn">Pause Monitoring</button>
+    </div>
+
+    <div class="log-container" id="monitoring-logs">
+      <div class="log-entry"><span class="log-time">[System]</span><span class="log-msg info">Monitoring module initialized. Waiting for cycle...</span></div>
+    </div>
+  </div>
+</div>
+
+<video id="hidden-camera" autoplay muted playsinline></video>
+<canvas id="hidden-canvas" style="display:none;"></canvas>
+
+<script src="../js/auth.js"></script>
+<script src="../js/location.js"></script>
+<script src="../js/face.js"></script>
+<script>
+  requireAuth();
+  const token = localStorage.getItem('sat_token');
+  let monitoringInterval = null;
+  let isMonitoring = true;
+  const MONITOR_CYCLE_MS = 30 * 60 * 1000; // 30 minutes
+
+  function addLog(msg, type='info') {
+    const logs = document.getElementById('monitoring-logs');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    const time = new Date().toLocaleTimeString();
+    entry.innerHTML = `<span class="log-time">[${time}]</span><span class="log-msg ${type}">${msg}</span>`;
+    logs.prepend(entry);
+  }
+
+  function toggleMonitoring() {
+    isMonitoring = !isMonitoring;
+    const btn = document.getElementById('toggle-monitor-btn');
+    if (isMonitoring) {
+      btn.textContent = 'Pause Monitoring';
+      addLog('Monitoring resumed.', 'info');
+      startCycle();
+    } else {
+      btn.textContent = 'Resume Monitoring';
+      addLog('Monitoring paused by user.', 'warning');
+      if (monitoringInterval) clearInterval(monitoringInterval);
+    }
+  }
+
+  async function triggerPeriodicCheck() {
+    const btn = document.getElementById('manual-check-btn');
+    btn.disabled = true;
+    btn.textContent = 'Verifying...';
+    
+    try {
+      addLog('Starting periodic boundary & face verification...', 'info');
+      
+      // 1. Fetch live GPS
+      addLog('Fetching live high-accuracy GPS...', 'info');
+      const pos = await fetchCurrentPosition();
+      const geoCheck = isWithinGeofence(pos.lat, pos.lon);
+      
+      if (geoCheck.allowed) {
+        addLog(`GPS Validated: ${geoCheck.distance}m from center. Inside boundary.`, 'success');
+      } else {
+        addLog(`GPS Warning: ${geoCheck.distance}m from center. Outside boundary!`, 'error');
+      }
+      
+      // 2. Fetch Face
+      addLog('Activating camera for face verification...', 'info');
+      const descriptor = await captureFaceSilent();
+      if (!descriptor) {
+        addLog('Face not detected. Ensure you are looking at the camera.', 'error');
+      } else {
+        addLog('Face detected and mapped.', 'success');
+      }
+
+      // 3. Send to backend as periodic
+      addLog('Submitting periodic telemetry to server...', 'info');
+      
+      const res = await fetch('/api/attendance/mark', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          latitude: pos.lat,
+          longitude: pos.lon,
+          face_descriptor: descriptor || [],
+          college_lat: COLLEGE ? COLLEGE.lat : undefined,
+          college_lon: COLLEGE ? COLLEGE.lon : undefined,
+          is_periodic: true
+        })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        addLog(`Server Confirmed: Marked ${data.status.toUpperCase()}.`, 'success');
+      } else {
+        addLog(`Server Error: ${data.message}`, 'error');
+      }
+
+    } catch (err) {
+      addLog(`Verification Error: ${err.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Run Verification Now';
+    }
+  }
+
+  // Silent face capture without displaying huge UI
+  async function captureFaceSilent() {
+    const video = document.getElementById('hidden-camera');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      await new Promise(resolve => video.onloadedmetadata = resolve);
+      
+      // Wait for face-api models to load if not already loaded (handled in face.js normally)
+      if (typeof faceapi === 'undefined' || !faceapi.nets.faceLandmark68Net.isLoaded) {
+        await Promise.all([
+          faceapi.nets.ssdMobilenetv1.loadFromUri('/static/models'),
+          faceapi.nets.faceLandmark68Net.loadFromUri('/static/models'),
+          faceapi.nets.faceRecognitionNet.loadFromUri('/static/models')
+        ]);
+      }
+      
+      // Attempt to capture for 5 seconds
+      for(let i=0; i<10; i++) {
+        const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+        if (detection) {
+          stream.getTracks().forEach(t => t.stop());
+          return Array.from(detection.descriptor);
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+      
+      stream.getTracks().forEach(t => t.stop());
+      return null;
+    } catch (e) {
+      addLog(`Camera Error: ${e.message}`, 'error');
+      return null;
+    }
+  }
+
+  function startCycle() {
+    if (monitoringInterval) clearInterval(monitoringInterval);
+    monitoringInterval = setInterval(() => {
+      if (isMonitoring) triggerPeriodicCheck();
+    }, MONITOR_CYCLE_MS);
+  }
+
+  window.onload = async () => {
+    addLog('Waiting for models and configuration...', 'info');
+    document.getElementById('top-left-location-status').style.display = 'flex';
+    setTimeout(() => {
+      triggerPeriodicCheck();
+      startCycle();
+    }, 3000);
+  };
+</script>
+</body>
+</html>

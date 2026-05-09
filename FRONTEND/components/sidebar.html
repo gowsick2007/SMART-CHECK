@@ -1,0 +1,48 @@
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <i class="fa-solid fa-graduation-cap" style="color: var(--accent-cyan); margin-right: 10px;"></i>SmartAttendance
+  </div>
+  
+  <div class="sidebar-user">
+    <div class="user-avatar" id="sidebarAvatar">S</div>
+    <div class="user-info">
+      <div class="user-name" id="sidebarName">Student</div>
+      <div class="user-subtitle" id="sidebarSub">Loading...</div>
+    </div>
+  </div>
+
+  <div class="nav-section-label">MAIN MENU</div>
+  <div class="nav-list">
+    <a href="/student_dashboard" class="nav-item" data-page="student_dashboard.html">
+      <i class="fa-solid fa-house"></i> Dashboard
+    </a>
+    <a href="/face-scan" class="nav-item" data-page="face-scan">
+      <i class="fa-solid fa-camera"></i> Mark Attendance
+    </a>
+    <a href="/auto-verify" class="nav-item" data-page="auto-verify">
+      <i class="fa-solid fa-rotate"></i> Auto Verify
+    </a>
+    <a href="/history" class="nav-item" data-page="history">
+      <i class="fa-solid fa-clock-rotate-left"></i> Attendance History
+    </a>
+    <a href="/profile" class="nav-item" data-page="profile">
+      <i class="fa-solid fa-user"></i> Profile
+    </a>
+  </div>
+  
+  <div class="nav-section-label" id="adminNavSection" style="display: none;">ADMIN PANEL</div>
+  <div class="nav-list" id="adminNavList" style="display: none;">
+    <a href="/admin_dashboard" class="nav-item" data-page="admin_dashboard.html">
+      <i class="fa-solid fa-shield-halved"></i> Boundary Check
+    </a>
+  </div>
+
+  <div class="sidebar-footer">
+    <a href="/settings" class="nav-item" data-page="settings">
+      <i class="fa-solid fa-gear"></i> Settings
+    </a>
+    <a href="#" class="nav-item" onclick="handleLogout()">
+      <i class="fa-solid fa-right-from-bracket"></i> Logout
+    </a>
+  </div>
+</div>

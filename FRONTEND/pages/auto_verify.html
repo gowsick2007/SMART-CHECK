@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Attendance — Auto Verify</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+    }
+    .auto-panel-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(0, 255, 204, 0.1);
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+      box-shadow: var(--shadow-card);
+      max-width: 650px;
+      margin: 0 auto;
+    }
+    .countdown-timer-large {
+      font-family: 'Outfit', sans-serif;
+      font-size: 4rem;
+      font-weight: 700;
+      color: #00ffcc;
+      text-shadow: 0 0 30px rgba(0,255,204,0.5);
+      margin: 20px 0;
+    }
+    .result-present {
+      color: var(--accent-green);
+      font-weight: 700;
+      font-size: 1.5rem;
+      text-shadow: 0 0 15px rgba(56,239,125,0.4);
+    }
+    .result-absent {
+      color: var(--accent-red);
+      font-weight: 700;
+      font-size: 1.5rem;
+      text-shadow: 0 0 15px rgba(252,74,26,0.4);
+    }
+    #hidden-camera { display: none; }
+  </style>
+</head>
+<body>
+
+<div id="sidebarContainer"></div>
+
+<div class="main-content">
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="top-bar-title">Auto Verify</div>
+    <div class="top-bar-actions">
+      <i class="fa-solid fa-bell top-bar-icon"></i>
+      <div class="user-avatar" id="topBarAvatar" style="width:36px; height:36px;">S</div>
+    </div>
+  </div>
+
+  <!-- Hero Section & Card -->
+  <div class="auto-panel-card">
+    <div style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; color: white; margin-bottom: 8px;">
+      30-MIN AUTO VERIFICATION
+    </div>
+    <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 30px;">
+      Keep this tab active. Your location and face will be scanned automatically.
+    </div>
+
+    <div class="countdown-timer-large" id="countdown">30:00</div>
+    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 30px;">
+      NEXT AUTO CHECK
+    </div>
+
+    <button class="btn btn-primary" onclick="checkBoundaryAndFace()" id="manual-btn" style="height: 48px; border-radius: 10px; font-weight: 700; padding: 0 32px; margin-bottom: 35px;">
+      Run Check Now
+    </button>
+
+    <!-- Last Check Result -->
+    <div class="glass-card" style="padding: 24px; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; text-align: left;">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;">
+        LAST CHECK RESULT
+      </div>
+      <div id="last-result-text" style="font-size: 16px; font-weight: 700; color: white;">
+        Waiting for first check...
+      </div>
+      <div id="last-result-time" style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+        --:-- --
+      </div>
+    </div>
+  </div>
+</div>
+
+<video id="hidden-camera" autoplay muted playsinline></video>
+
+<script src="../js/auth.js"></script>
+<script src="../js/location.js"></script>
+<script src="../js/face.js"></script>
+<script>
+  // Load sidebar
+  fetch('../components/sidebar.html')
+    .then(r => r.text())
+    .then(html => {
+      document.getElementById('sidebarContainer').innerHTML = html;
+      initSidebar();
+    });
+
+  function initSidebar() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const storedStudent = JSON.parse(localStorage.getItem('sat_student') || '{}');
+    const email = user.email || storedStudent.email || localStorage.getItem('userEmail') || '';
+
+    document.getElementById('sidebarName').textContent = user.name || storedStudent.name || 'Student';
+    document.getElementById('sidebarSub').textContent = (user.department || storedStudent.department || '') + ' · ' + (user.section || storedStudent.class_section || '');
+    document.getElementById('sidebarAvatar').textContent = (user.name || storedStudent.name || 'S').charAt(0).toUpperCase();
+    document.getElementById('topBarAvatar').textContent = (user.name || storedStudent.name || 'S').charAt(0).toUpperCase();
+
+    const adminSection = document.getElementById('adminNavSection');
+    const adminList = document.getElementById('adminNavList');
+    if (adminSection && adminList) {
+      if (email === 'gowsicklitheswaran@gmail.com') {
+        adminSection.style.display = 'block';
+        adminList.style.display = 'block';
+      } else {
+        adminSection.style.display = 'none';
+        adminList.style.display = 'none';
+      }
+    }
+
+    // Active nav highlight
+    document.querySelectorAll('.nav-item').forEach(item => {
+      if (item.getAttribute('href') === '/auto-verify') {
+        item.classList.add('active');
+      }
+    });
+  }
+
+  requireAuth();
+  const token = localStorage.getItem('sat_token');
+
+  const CYCLE_MS = 1800000; // 30 mins
+  let nextCheckTime = Date.now() + CYCLE_MS;
+  
+  setInterval(updateCountdown, 1000);
+  setInterval(checkBoundaryAndFace, CYCLE_MS);
+
+  function updateCountdown() {
+    let diff = Math.floor((nextCheckTime - Date.now()) / 1000);
+    if (diff < 0) diff = 0;
+    const m = Math.floor(diff / 60).toString().padStart(2, '0');
+    const s = (diff % 60).toString().padStart(2, '0');
+    document.getElementById('countdown').textContent = `${m}:${s}`;
+  }
+
+  async function checkBoundaryAndFace() {
+    const btn = document.getElementById('manual-btn');
+    btn.disabled = true;
+    btn.textContent = 'Verifying...';
+    
+    try {
+      showToast('Running Auto Verify...', 'info');
+      
+      // Step 1: GPS Check
+      const pos = await fetchCurrentPosition();
+      const geoCheck = isWithinGeofence(pos.lat, pos.lon);
+      const gpsStatus = geoCheck.allowed ? 'inside' : 'outside';
+      
+      // Step 2: Face Check
+      const descriptor = await captureFaceSilent();
+      const faceStatus = descriptor ? 'verified' : 'failed';
+      
+      // Submit to backend
+      const res = await fetch('/api/auto-verify/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          latitude: pos.lat,
+          longitude: pos.lon,
+          gps_status: gpsStatus,
+          face_status: faceStatus
+        })
+      });
+      const data = await res.json();
+      
+      const resEl = document.getElementById('last-result-text');
+      const timeEl = document.getElementById('last-result-time');
+      
+      if (data.final_status === 'present') {
+        resEl.innerHTML = '<span class="result-present">PRESENT</span>';
+        showToast('Auto Verify passed!', 'success');
+      } else {
+        resEl.innerHTML = `<span class="result-absent">ABSENT (${gpsStatus}, ${faceStatus})</span>`;
+        showToast('Auto Verify failed.', 'error');
+      }
+      timeEl.textContent = new Date().toLocaleTimeString();
+      
+      // Reset timer
+      nextCheckTime = Date.now() + CYCLE_MS;
+      
+    } catch(err) {
+      showToast('Error during auto verify: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Run Check Now';
+    }
+  }
+
+  async function captureFaceSilent() {
+    const video = document.getElementById('hidden-camera');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      await new Promise(resolve => video.onloadedmetadata = resolve);
+      
+      if (typeof faceapi === 'undefined' || !faceapi.nets.faceLandmark68Net.isLoaded) {
+        await Promise.all([
+          faceapi.nets.ssdMobilenetv1.loadFromUri('/static/models'),
+          faceapi.nets.faceLandmark68Net.loadFromUri('/static/models'),
+          faceapi.nets.faceRecognitionNet.loadFromUri('/static/models')
+        ]);
+      }
+      
+      for(let i=0; i<6; i++) {
+        const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+        if (detection) {
+          stream.getTracks().forEach(t => t.stop());
+          return Array.from(detection.descriptor);
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+      stream.getTracks().forEach(t => t.stop());
+      return null;
+    } catch (e) { return null; }
+  }
+</script>
+</body>
+</html>

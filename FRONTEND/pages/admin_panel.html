@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Attendance — Admin Panel</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .admin-wrapper { max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem; display: flex; flex-direction: column; gap: 2rem; }
+    .admin-title { font-size: 2.5rem; font-family: 'Outfit', sans-serif; font-weight: 800; color: var(--accent-cyan); }
+    .stat-box { background: rgba(10, 15, 30, 0.6); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 1.5rem; text-align: center; }
+    .stat-val { font-size: 2.5rem; font-weight: 800; color: var(--accent-blue); }
+    .stat-label { font-size: 0.95rem; color: var(--text-secondary); text-transform: uppercase; margin-top: 0.5rem; }
+    
+    .filter-bar { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }
+    .filter-input { background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff; padding: 0.8rem 1rem; border-radius: 8px; flex: 1; }
+    
+    .table-container { background: rgba(10, 15, 30, 0.6); border-radius: 24px; padding: 2rem; overflow-x: auto; border: 1px solid rgba(255, 255, 255, 0.05); }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 1rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    th { color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; }
+    
+    .badge { padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block; }
+    .badge.green { background: rgba(16,185,129,0.1); color: var(--accent-green); border: 1px solid rgba(16,185,129,0.3); }
+    .badge.red { background: rgba(239,68,68,0.1); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.3); }
+    .badge.gray { background: rgba(255,255,255,0.1); color: var(--text-secondary); }
+
+    #login-overlay { position: fixed; inset: 0; background: var(--bg-main); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .login-card { background: rgba(10,15,30,0.8); padding: 3rem; border-radius: 24px; border: 1px solid var(--accent-cyan); width: 100%; max-width: 400px; text-align: center; }
+    .login-input { width: 100%; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; background: rgba(0,0,0,0.5); border: 1px solid var(--border); color: #fff; }
+  </style>
+</head>
+<body>
+
+<div id="login-overlay">
+  <div class="login-card">
+    <h2 style="color:var(--accent-cyan); margin-bottom:2rem; font-family:'Outfit',sans-serif;">Admin Login</h2>
+    <input type="text" id="admin-user" class="login-input" placeholder="Username" />
+    <input type="password" id="admin-pass" class="login-input" placeholder="Password" />
+    <button class="btn btn-primary" style="width:100%; padding:1rem;" onclick="adminLogin()">Login</button>
+  </div>
+</div>
+
+<nav class="navbar">
+  <a class="navbar-brand" href="/dashboard"> Smart<span>Attendance</span></a>
+  <div class="nav-links">
+    <a href="/dashboard"  class="nav-link">Dashboard</a>
+    <a href="/auto-verify" class="nav-link">Auto Verify</a>
+    <a href="/admin-panel" class="nav-link active">Admin Panel</a>
+    <div class="nav-avatar" title="Logout" onclick="handleLogout()"></div>
+  </div>
+</nav>
+
+<div id="toast-container"></div>
+
+<div class="page-wrapper admin-wrapper">
+  
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="admin-title">Admin Dashboard</div>
+    <button class="btn btn-ghost" onclick="exportCSV()">Export CSV</button>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
+    <div class="stat-box">
+      <div class="stat-val" id="total-students">0</div>
+      <div class="stat-label">Total Students</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="today-present" style="color:var(--accent-green);">0</div>
+      <div class="stat-label">Today's Present</div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <div class="filter-bar">
+      <input type="text" id="filter-dept" class="filter-input" placeholder="Filter by Department..." oninput="loadStudents()" />
+      <input type="text" id="filter-class" class="filter-input" placeholder="Filter by Class Year..." oninput="loadStudents()" />
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Student Details</th>
+          <th>Department / Class</th>
+          <th>Inside Boundary?</th>
+          <th>Face Verified?</th>
+          <th>Auto Verify Status</th>
+        </tr>
+      </thead>
+      <tbody id="students-table-body">
+        <tr><td colspan="5" style="text-align:center;">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script>
+  let adminToken = localStorage.getItem('sat_admin_token');
+  if (adminToken) {
+    document.getElementById('login-overlay').style.display = 'none';
+    initAdmin();
+  }
+
+  async function adminLogin() {
+    const user = document.getElementById('admin-user').value;
+    const pass = document.getElementById('admin-pass').value;
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, password: pass })
+    });
+    const data = await res.json();
+    if (data.success) {
+      localStorage.setItem('sat_admin_token', data.token);
+      adminToken = data.token;
+      document.getElementById('login-overlay').style.display = 'none';
+      showToast('Admin logged in successfully', 'success');
+      initAdmin();
+    } else {
+      showToast(data.message, 'error');
+    }
+  }
+
+  function initAdmin() {
+    loadSummary();
+    loadStudents();
+    setInterval(loadBoundaryStatus, 60000); // 60 seconds
+  }
+
+  async function loadSummary() {
+    try {
+      const res = await fetch('/api/admin/today-summary', { headers: {'Authorization': `Bearer ${adminToken}`} });
+      const data = await res.json();
+      if(data.success) {
+        document.getElementById('total-students').textContent = data.total_students;
+        document.getElementById('today-present').textContent = data.present_count;
+      }
+    } catch(e) {}
+  }
+
+  let studentList = [];
+  let boundaryMap = {};
+
+  async function loadStudents() {
+    const dept = document.getElementById('filter-dept').value;
+    const cls = document.getElementById('filter-class').value;
+    let url = '/api/admin/all-students?';
+    if (dept) url += `department=${encodeURIComponent(dept)}&`;
+    if (cls) url += `class=${encodeURIComponent(cls)}&`;
+
+    try {
+      const res = await fetch(url, { headers: {'Authorization': `Bearer ${adminToken}`} });
+      const data = await res.json();
+      if(data.success) {
+        studentList = data.students;
+        await loadBoundaryStatus(); // Loads and renders
+      }
+    } catch(e) {}
+  }
+
+  async function loadBoundaryStatus() {
+    try {
+      const res = await fetch('/api/admin/boundary-status', { headers: {'Authorization': `Bearer ${adminToken}`} });
+      const data = await res.json();
+      if(data.success) {
+        boundaryMap = {};
+        data.status.forEach(st => boundaryMap[st.student_id] = st);
+        renderTable();
+      }
+    } catch(e) {}
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('students-table-body');
+    tbody.innerHTML = '';
+    studentList.forEach(s => {
+      const st = boundaryMap[s.student_id];
+      let insideHtml = '<span class="badge gray">Unknown</span>';
+      let faceHtml = '<span class="badge gray">Unknown</span>';
+      let finalHtml = '<span class="badge gray">No Data</span>';
+
+      if (st) {
+        insideHtml = st.gps_status === 'inside' ? '<span class="badge green">YES</span>' : '<span class="badge red">NO</span>';
+        faceHtml = st.face_status === 'verified' ? '<span class="badge green">VERIFIED</span>' : '<span class="badge red">FAILED</span>';
+        finalHtml = st.final_status === 'present' ? '<span class="badge green">PRESENT</span>' : '<span class="badge red">ABSENT</span>';
+      }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div style="font-weight:700; color:var(--text-primary);">${s.name}</div>
+          <div style="font-size:0.85rem; color:var(--text-secondary);">${s.student_id} | ${s.email}</div>
+        </td>
+        <td>${s.department} <br/> <span style="font-size:0.85rem; color:var(--text-muted);">${s.class_name}</span></td>
+        <td>${insideHtml}</td>
+        <td>${faceHtml}</td>
+        <td>${finalHtml}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function exportCSV() {
+    let csv = "Student ID,Name,Department,Class,Inside Boundary,Face Verified,Final Status\n";
+    studentList.forEach(s => {
+      const st = boundaryMap[s.student_id] || {};
+      csv += `${s.student_id},${s.name},${s.department},${s.class_name},${st.gps_status||'unknown'},${st.face_status||'unknown'},${st.final_status||'unknown'}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'attendance_report.csv');
+    a.click();
+  }
+</script>
+</body>
+</html>

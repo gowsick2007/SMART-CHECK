@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Attendance — Register</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      min-height: 100vh;
+      background: var(--bg-primary);
+      font-family: 'Inter', sans-serif;
+    }
+    .register-container {
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+    }
+    .left-panel {
+      flex: 1;
+      background: linear-gradient(135deg, #0a0f1e, #1a1f35);
+      border-right: 1px solid rgba(0, 255, 204, 0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px;
+    }
+    .right-panel {
+      flex: 1.2;
+      background: #0d1117;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      overflow-y: auto;
+    }
+    .branding-box {
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .branding-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 36px;
+      font-weight: 900;
+      color: #ffffff;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .branding-tagline {
+      font-size: 18px;
+      color: var(--accent-cyan);
+      margin-bottom: 40px;
+      font-weight: 600;
+    }
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    .feature-item i {
+      color: var(--accent-cyan);
+      font-size: 18px;
+    }
+    .form-card {
+      width: 100%;
+      max-width: 520px;
+      padding: 40px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: var(--shadow-card);
+    }
+    .form-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+    .form-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 30px;
+    }
+    
+    /* Progress bar styling */
+    .progress-bar-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      position: relative;
+    }
+    .progress-bar-line {
+      position: absolute;
+      top: 15px;
+      left: 10%;
+      right: 10%;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.1);
+      z-index: 1;
+    }
+    .progress-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      z-index: 2;
+      flex: 1;
+    }
+    .step-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(15, 25, 45, 0.9);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.4);
+    }
+    .progress-step.active .step-dot {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+    }
+    .step-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+    .progress-step.active .step-label {
+      color: #ffffff;
+    }
+
+    /* Section divider styling */
+    .form-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      letter-spacing: 1.5px;
+      border-bottom: 1px solid rgba(0, 255, 204, 0.15);
+      padding-bottom: 8px;
+      margin-top: 25px;
+      margin-bottom: 16px;
+    }
+
+    .form-control-container {
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .form-control-container i {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(255, 255, 255, 0.3);
+      font-size: 14px;
+    }
+    .form-control-with-icon {
+      width: 100%;
+      height: 48px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: white;
+      padding: 0 16px 0 45px;
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+    .form-control-with-icon:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.1);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .btn-submit {
+      height: 48px;
+      width: 100%;
+      background: var(--gradient-cyan);
+      border: none;
+      border-radius: 10px;
+      color: #0a0f1e;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .btn-submit:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+    @media (max-width: 900px) {
+      .left-panel {
+        display: none;
+      }
+      .right-panel {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<div class="register-container">
+  <!-- Left Panel -->
+  <div class="left-panel">
+    <div class="branding-box">
+      <div class="branding-logo">
+        <i class="fa-solid fa-graduation-cap" style="color: var(--accent-cyan);"></i> SmartAttendance
+      </div>
+      <div class="branding-tagline">Smart Attendance System</div>
+      <div class="feature-list">
+        <div class="feature-item">
+          <i class="fa-solid fa-circle-check"></i> GPS-based location verification
+        </div>
+        <div class="feature-item">
+          <i class="fa-solid fa-circle-check"></i> AI face recognition attendance
+        </div>
+        <div class="feature-item">
+          <i class="fa-solid fa-circle-check"></i> Real-time boundary monitoring
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="right-panel">
+    <div class="form-card">
+      <div class="form-title">Create Account</div>
+      <div class="form-subtitle">Join Smart Attendance System</div>
+
+      <!-- Progress Bar (Visual Only) -->
+      <div class="progress-bar-container">
+        <div class="progress-bar-line"></div>
+        <div class="progress-step active">
+          <div class="step-dot">1</div>
+          <div class="step-label">Personal</div>
+        </div>
+        <div class="progress-step active">
+          <div class="step-dot">2</div>
+          <div class="step-label">Academic</div>
+        </div>
+        <div class="progress-step active">
+          <div class="step-dot">3</div>
+          <div class="step-label">Security</div>
+        </div>
+      </div>
+
+      <form id="register-form" onsubmit="handleRegister(event)">
+        <!-- Section: Personal Info -->
+        <div class="form-section-label">Personal Information</div>
+        <div class="form-row">
+          <div class="form-control-container">
+            <i class="fa-solid fa-id-card"></i>
+            <input type="text" id="reg-student-id" class="form-control-with-icon" placeholder="CS2024001" required />
+          </div>
+          <div class="form-control-container">
+            <i class="fa-solid fa-user"></i>
+            <input type="text" id="reg-name" class="form-control-with-icon" placeholder="Full name" required />
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-control-container">
+            <i class="fa-solid fa-envelope"></i>
+            <input type="email" id="reg-email" class="form-control-with-icon" placeholder="your@email.com" required />
+          </div>
+          <div class="form-control-container">
+            <i class="fa-solid fa-phone"></i>
+            <input type="tel" id="reg-phone" class="form-control-with-icon" placeholder="+91 XXXXXXXXXX" />
+          </div>
+        </div>
+
+        <!-- Section: Academic Info -->
+        <div class="form-section-label">Academic Information</div>
+        <div class="form-control-container">
+          <i class="fa-solid fa-building" style="z-index: 10;"></i>
+          <select id="reg-dept" class="form-control-with-icon" required style="appearance: none;">
+            <option value="">Select Department...</option>
+            <option value="Computer Science">Computer Science</option>
+            <option value="AI&amp;DS">AI&amp;DS</option>
+            <option value="IT">IT</option>
+            <option value="ECE">ECE</option>
+            <option value="Information Technology">Information Technology</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Mechanical Engineering">Mechanical Engineering</option>
+            <option value="Civil Engineering">Civil Engineering</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-control-container">
+            <i class="fa-solid fa-graduation-cap" style="z-index: 10;"></i>
+            <select id="reg-year" class="form-control-with-icon" required style="appearance: none;">
+              <option value="">Select Year...</option>
+              <option value="I Year">I Year</option>
+              <option value="II Year">II Year</option>
+              <option value="III Year">III Year</option>
+              <option value="IV Year">IV Year</option>
+            </select>
+          </div>
+          <div class="form-control-container">
+            <i class="fa-solid fa-users" style="z-index: 10;"></i>
+            <select id="reg-class-section" class="form-control-with-icon" style="appearance: none;">
+              <option value="">No Section</option>
+              <option value="Section A">Section A</option>
+              <option value="Section B">Section B</option>
+              <option value="Section C">Section C</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Section: Security -->
+        <div class="form-section-label">Security</div>
+        <div class="form-row">
+          <div class="form-control-container">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="reg-password" class="form-control-with-icon" placeholder="Min 8 chars" required minlength="8" />
+          </div>
+          <div class="form-control-container">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="reg-confirm" class="form-control-with-icon" placeholder="Confirm" required />
+          </div>
+        </div>
+
+        <div id="reg-error" class="alert alert-error" style="display:none; margin-bottom: 16px;"></div>
+
+        <button type="submit" class="btn-submit" id="reg-btn">
+          <span id="reg-btn-text">Create Account</span>
+          <span id="reg-spinner" class="spinner" style="display:none"></span>
+        </button>
+      </form>
+      
+      <p style="text-align:center; margin-top:25px; font-size:14px; color:var(--text-secondary)">
+        Already have an account?
+        <a href="login.html" style="color: var(--accent-cyan); font-weight: 700; text-decoration: none;">Sign In</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Attendance — Face Verification</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .attendance-details-wrapper {
+      max-width: 1100px;
+      margin: 2.5rem auto;
+      padding: 0 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+    
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 1rem; }
+    .rate-card {
+      padding: 2rem 2.5rem;
+      background: rgba(10, 15, 30, 0.6);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+    .rate-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .rate-label { font-weight: 700; font-size: 1.1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
+    .rate-value { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 2rem; color: var(--accent-green); }
+
+    .verification-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      text-align: center;
+      background: rgba(10, 15, 30, 0.4);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(34, 211, 238, 0.15);
+      border-radius: 24px;
+      padding: 3rem 2rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    }
+    
+    .camera-container.huge {
+      width: 100%;
+      max-width: 650px;
+      height: 650px;
+      border-radius: 50%;
+      box-shadow: 0 0 60px rgba(34, 211, 238, 0.25), inset 0 0 40px rgba(34, 211, 238, 0.2);
+      border: 4px solid rgba(34, 211, 238, 0.5);
+      margin: 1rem auto 3rem;
+      position: relative;
+      overflow: hidden;
+      transform: translateZ(0);
+    }
+    
+    .camera-container.huge .face-guide {
+      width: 450px;
+      height: 450px;
+      border-width: 6px;
+      border-radius: 50%;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 9999px rgba(10, 15, 30, 0.85);
+      animation: pulseGlow 3s infinite;
+    }
+    
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 0 9999px rgba(10, 15, 30, 0.85), 0 0 20px rgba(34, 211, 238, 0.5) inset; border-color: rgba(34, 211, 238, 0.6); }
+      50% { box-shadow: 0 0 0 9999px rgba(10, 15, 30, 0.85), 0 0 50px rgba(34, 211, 238, 0.9) inset; border-color: rgba(34, 211, 238, 1); }
+      100% { box-shadow: 0 0 0 9999px rgba(10, 15, 30, 0.85), 0 0 20px rgba(34, 211, 238, 0.5) inset; border-color: rgba(34, 211, 238, 0.6); }
+    }
+    
+    .verification-info {
+      width: 100%;
+      padding: 2rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-bottom: 2rem;
+    }
+
+    .verification-badges {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .status-badge {
+      padding: 0.6rem 1.2rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .status-badge.ok { color: var(--accent-green); border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.1); }
+    .status-badge.wait { color: var(--accent-cyan); border-color: rgba(34, 211, 238, 0.3); background: rgba(34, 211, 238, 0.1); }
+    
+    .mode-switch {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 2rem;
+      background: rgba(0,0,0,0.3);
+      padding: 0.5rem;
+      border-radius: 30px;
+    }
+    .mode-btn {
+      padding: 0.6rem 2rem;
+      border-radius: 25px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .mode-btn.active {
+      background: var(--accent-cyan);
+      color: #000;
+      box-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
+    }
+    
+    @media (max-width: 768px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .camera-container.huge { height: 400px; max-width: 400px; }
+      .camera-container.huge .face-guide { width: 280px; height: 280px; }
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <a class="navbar-brand" href="/dashboard"> Smart<span>Attendance</span></a>
+  <div class="nav-links">
+    <a href="/dashboard"  class="nav-link">Dashboard</a>
+    <a href="/face-scan"  class="nav-link active">Mark Attendance</a>
+    <a href="/auto-verify" class="nav-link">Auto Verify</a>
+    <a href="/history"    class="nav-link">Attendance History</a>
+    <a href="/face-scan"  class="nav-link active">Face Scan</a>
+    <a href="/profile"    class="nav-link">Profile</a>
+    <a href="/admin-panel" class="nav-link" id="nav-admin" style="display:none;">Admin Panel</a>
+    <div class="nav-avatar" id="nav-avatar" onclick="handleLogout()"></div>
+  </div>
+</nav>
+<div id="toast-container"></div>
+
+<div class="attendance-details-wrapper">
+  
+  <a href="/dashboard" class="back-nav-btn" style="align-self: flex-start;">← Back to Dashboard</a>
+
+  <div class="mode-switch">
+    <div class="mode-btn active" id="mode-verify-btn" onclick="switchMode('verify')">Mark Attendance</div>
+    <div class="mode-btn" id="mode-enroll-btn" onclick="switchMode('enroll')">Enroll Face</div>
+  </div>
+
+  <!-- Attendance Stats Row -->
+  <div class="stats-grid" id="stats-grid">
+    <div class="card stat-card" style="padding: 2rem;">
+      <div class="stat-icon"></div>
+      <div class="stat-value stat-blue" id="stat-total" style="font-size: 2.5rem;">—</div>
+      <div class="stat-label" style="font-size: 1.1rem; margin-top:0.5rem;">Total Days</div>
+    </div>
+    <div class="card stat-card" style="padding: 2rem;">
+      <div class="stat-icon"></div>
+      <div class="stat-value stat-green" id="stat-present" style="font-size: 2.5rem;">—</div>
+      <div class="stat-label" style="font-size: 1.1rem; margin-top:0.5rem;">Present</div>
+    </div>
+    <div class="card stat-card" style="padding: 2rem;">
+      <div class="stat-icon"></div>
+      <div class="stat-value stat-orange" id="stat-late" style="font-size: 2.5rem;">—</div>
+      <div class="stat-label" style="font-size: 1.1rem; margin-top:0.5rem;">Late</div>
+    </div>
+    <div class="card stat-card" style="padding: 2rem;">
+      <div class="stat-icon"></div>
+      <div class="stat-value stat-red" id="stat-absent" style="font-size: 2.5rem;">—</div>
+      <div class="stat-label" style="font-size: 1.1rem; margin-top:0.5rem;">Absent</div>
+    </div>
+  </div>
+
+  <!-- Attendance Rate -->
+  <div class="rate-card">
+    <div class="rate-header">
+      <span class="rate-label">Overall Attendance Rate</span>
+      <span class="rate-value" id="attend-pct">0%</span>
+    </div>
+    <div class="progress-bar" style="height: 12px;">
+      <div class="progress-fill" id="attend-bar" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Face Verification Section -->
+  <div class="verification-container">
+    <div class="section-header" style="text-align: center; margin-bottom: 2rem;">
+      <div class="section-title" id="page-title" style="font-size: 2.5rem; color: var(--accent-cyan); text-shadow: 0 0 20px rgba(34, 211, 238, 0.3);">Face Verification</div>
+      <div class="section-subtitle" id="page-subtitle" style="font-size: 1.2rem;">Please look directly into the AI scanner to confirm your identity</div>
+    </div>
+
+    <!-- Centered Huge Camera -->
+    <div class="camera-container huge" id="camera-box">
+      <video id="camera-video" class="camera-video" autoplay muted playsinline></video>
+      <div class="camera-overlay">
+        <div class="face-guide" id="face-guide"></div>
+      </div>
+      <div class="camera-status" id="camera-status" style="font-size: 1.1rem; padding: 1rem 2rem; background: rgba(10, 15, 30, 0.9);">Initializing AI Scanner...</div>
+    </div>
+
+    <!-- Info & Badges -->
+    <div class="verification-info">
+      <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary);">Verification Status</div>
+      <div class="verification-badges">
+        <div class="status-badge" id="badge-gps">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          <span id="badge-gps-text">Checking GPS...</span>
+        </div>
+        <div class="status-badge" id="badge-face">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"></path><path d="M12 12 2.1 14.8a10 10 0 0 0 19.8 0L12 12z"></path></svg>
+          <span id="badge-face-text">Waiting for Face...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display: flex; gap: 1.5rem; width: 100%; max-width: 600px;">
+      <button class="btn btn-ghost" style="flex: 1; font-size: 1.1rem;" onclick="retryProcess()" id="retry-btn">Restart Scanner</button>
+      <button class="btn btn-success" style="flex: 2; font-size: 1.3rem; padding: 1.25rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);" id="action-btn" onclick="handleAction()" disabled>Mark Attendance</button>
+    </div>
+    
+    <div id="mark-result" class="alert" style="display:none; margin-top: 2rem; width: 100%; max-width: 600px; text-align: center; font-size: 1.2rem; font-weight: 700;"></div>
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script src="../js/location.js"></script>
+<script src="../js/face.js"></script>
+<script src="../js/attendance.js"></script>
+<script>
+// Admin check
+if (localStorage.getItem('sat_admin_token')) {
+  document.getElementById('nav-admin').style.display = 'block';
+}
+
+// Authentication check
+requireAuth();
+const token = localStorage.getItem('sat_token');
+let currentMode = 'verify'; // 'verify' or 'enroll'
+
+// UI Element References
+const titleEl = document.getElementById('page-title');
+const subtitleEl = document.getElementById('page-subtitle');
+const actionBtn = document.getElementById('action-btn');
+const retryBtn = document.getElementById('retry-btn');
+const badgeGps = document.getElementById('badge-gps');
+const badgeGpsText = document.getElementById('badge-gps-text');
+const badgeFace = document.getElementById('badge-face');
+const badgeFaceText = document.getElementById('badge-face-text');
+
+// Initialize page
+window.onload = async () => {
+  // Load Stats via attendance.js functions
+  if (typeof loadAttendanceSummary === 'function') {
+    await loadAttendanceSummary();
+  }
+
+  // Check URL params for mode
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('mode') === 'enroll') {
+    switchMode('enroll');
+  } else {
+    // Default verify mode initialization
+    setupVerifyMode();
+  }
+};
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-verify-btn').className = mode === 'verify' ? 'mode-btn active' : 'mode-btn';
+  document.getElementById('mode-enroll-btn').className = mode === 'enroll' ? 'mode-btn active' : 'mode-btn';
+  
+  if (mode === 'verify') {
+    titleEl.textContent = 'Face Verification';
+    subtitleEl.textContent = 'Please look directly into the AI scanner to confirm your identity';
+    actionBtn.textContent = 'Mark Attendance';
+    actionBtn.className = 'btn btn-success';
+    badgeGps.style.display = 'flex';
+    setupVerifyMode();
+  } else {
+    titleEl.textContent = 'Face Registration';
+    subtitleEl.textContent = 'Enroll your face to enable automatic attendance marking';
+    actionBtn.textContent = 'Capture & Enroll Face';
+    actionBtn.className = 'btn btn-primary';
+    badgeGps.style.display = 'none'; // GPS not strictly needed for enrollment
+    setupEnrollMode();
+  }
+}
+
+async function setupVerifyMode() {
+  actionBtn.disabled = true;
+  document.getElementById('mark-result').style.display = 'none';
+  
+  // Start camera
+  await startCamera();
+  
+  // Start GPS watch (requires location.js)
+  startLocationWatch((pos, result) => {
+    if (result.allowed) {
+      badgeGps.className = 'status-badge ok';
+      badgeGpsText.textContent = 'GPS Verified';
+    } else {
+      badgeGps.className = 'status-badge wait';
+      badgeGpsText.textContent = 'Outside Boundary';
+    }
+    updateActionBtnState();
+  });
+  
+  // We override the face check polling since face.js is running it
+  setInterval(() => {
+    if (isFaceDetected()) {
+      badgeFace.className = 'status-badge ok';
+      badgeFaceText.textContent = 'Face Detected';
+    } else {
+      badgeFace.className = 'status-badge wait';
+      badgeFaceText.textContent = 'Waiting for Face...';
+    }
+    updateActionBtnState();
+  }, 500);
+}
+
+async function setupEnrollMode() {
+  actionBtn.disabled = true;
+  document.getElementById('mark-result').style.display = 'none';
+  stopLocationWatch();
+  
+  // Start camera
+  await startCamera();
+  
+  // Override polling for enroll
+  setInterval(() => {
+    if (currentMode !== 'enroll') return;
+    if (isFaceDetected()) {
+      badgeFace.className = 'status-badge ok';
+      badgeFaceText.textContent = 'Face Ready';
+      actionBtn.disabled = false;
+    } else {
+      badgeFace.className = 'status-badge wait';
+      badgeFaceText.textContent = 'Position your face';
+      actionBtn.disabled = true;
+    }
+  }, 500);
+}
+
+function updateActionBtnState() {
+  if (currentMode !== 'verify') return;
+  const gpsOk = badgeGps.classList.contains('ok');
+  const faceOk = isFaceDetected();
+  actionBtn.disabled = !(gpsOk && faceOk);
+}
+
+function retryProcess() {
+  stopCamera();
+  if (currentMode === 'verify') {
+    setupVerifyMode();
+  } else {
+    setupEnrollMode();
+  }
+}
+
+async function handleAction() {
+  if (currentMode === 'verify') {
+    // Override markAttendance from attendance.js or call it
+    await markAttendance();
+  } else {
+    // Enroll Face logic
+    await captureFaceEnrollment();
+  }
+}
+
+async function captureFaceEnrollment() {
+  const video = document.getElementById('camera-video');
+  if (!video.srcObject) { showToast('Start camera first', 'error'); return; }
+
+  const canvas = document.createElement('canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const imageB64 = canvas.toDataURL('image/jpeg', 0.9);
+
+  actionBtn.disabled = true;
+  actionBtn.textContent = 'Enrolling...';
+
+  try {
+    const res = await fetch('/api/face/enroll', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
+      body: JSON.stringify({ image_base64: imageB64 })
+    });
+    const data = await res.json();
+    const resultEl = document.getElementById('mark-result');
+    resultEl.style.display = 'block';
+    
+    if (data.success) {
+      resultEl.className = 'alert alert-success';
+      resultEl.textContent = data.message;
+      showToast('Face enrolled successfully!', 'success');
+      setTimeout(() => switchMode('verify'), 2000);
+    } else {
+      resultEl.className = 'alert alert-error';
+      resultEl.textContent = data.message;
+      actionBtn.disabled = false;
+      actionBtn.textContent = 'Capture & Enroll Face';
+    }
+  } catch(e) {
+    showToast('Enrollment failed. Please try again.', 'error');
+    actionBtn.disabled = false;
+    actionBtn.textContent = 'Capture & Enroll Face';
+  }
+}
+</script>
+</body>
+</html>

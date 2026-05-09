@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Attendance — Admin Tracking</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .admin-wrapper {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+    
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    .admin-title {
+      font-size: 2.5rem;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      color: var(--accent-cyan);
+    }
+    
+    .admin-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+    }
+    
+    .stat-box {
+      background: rgba(10, 15, 30, 0.6);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 1.5rem;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+    
+    .stat-val { font-size: 2.5rem; font-weight: 800; font-family: 'Outfit', sans-serif; }
+    .stat-label { font-size: 0.95rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-top: 0.5rem; }
+    
+    .table-container {
+      background: rgba(10, 15, 30, 0.6);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 24px;
+      padding: 2rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      overflow-x: auto;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    
+    th, td {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    th {
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+    }
+    
+    .badge {
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+    
+    .badge.success { background: rgba(16,185,129,0.1); color: var(--accent-green); border: 1px solid rgba(16,185,129,0.3); }
+    .badge.error { background: rgba(239,68,68,0.1); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.3); }
+    .badge.warning { background: rgba(245,158,11,0.1); color: var(--accent-orange); border: 1px solid rgba(245,158,11,0.3); }
+    .badge.neutral { background: rgba(255,255,255,0.1); color: var(--text-secondary); }
+
+    .refresh-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    .refresh-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 10px var(--accent-cyan);
+      animation: blink 2s infinite;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div style="display: flex; align-items: center; gap: 1.5rem;">
+    <a class="navbar-brand" href="/dashboard"> Smart<span>Attendance</span> <span style="font-size:1rem; color:var(--text-secondary); font-weight: 500;">| Admin</span></a>
+  </div>
+  <div class="nav-links">
+    <a href="/admin" class="nav-link active">Admin Tracking</a>
+    <div class="nav-avatar" id="nav-avatar" title="Logout" onclick="handleLogout()"></div>
+  </div>
+</nav>
+
+<div class="page-wrapper admin-wrapper">
+  
+  <div class="admin-header">
+    <div>
+      <div class="admin-title">Live User Tracking</div>
+      <div style="color: var(--text-secondary); margin-top: 0.5rem;">Real-time campus boundary and attendance analytics</div>
+    </div>
+    <div class="refresh-indicator">
+      <div class="refresh-dot"></div>
+      <span id="last-updated">Auto-refreshing...</span>
+    </div>
+  </div>
+
+  <div class="admin-stats">
+    <div class="stat-box">
+      <div class="stat-val" id="stat-total" style="color: var(--accent-blue);">0</div>
+      <div class="stat-label">Total Users</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-inside" style="color: var(--accent-green);">0</div>
+      <div class="stat-label">Inside Boundary</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-present" style="color: var(--accent-cyan);">0</div>
+      <div class="stat-label">Marked Present</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-absent" style="color: var(--accent-red);">0</div>
+      <div class="stat-label">Marked Absent</div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table id="users-table">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Location Status</th>
+          <th>Face Status</th>
+          <th>Attendance</th>
+          <th>GPS Coordinates</th>
+          <th>Last Checked</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="6" style="text-align:center; padding: 3rem; color: var(--text-secondary);">Loading live data...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script>
+  requireAuth();
+  const token = localStorage.getItem('sat_token');
+
+  async function fetchLiveTracking() {
+    try {
+      const res = await fetch('/api/student/all?with_attendance=true', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        updateDashboard(data.students);
+        document.getElementById('last-updated').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+      }
+    } catch (err) {
+      console.error("Tracking Error:", err);
+    }
+  }
+
+  function updateDashboard(students) {
+    const tbody = document.querySelector('#users-table tbody');
+    tbody.innerHTML = '';
+    
+    let total = students.length;
+    let inside = 0;
+    let present = 0;
+    let absent = 0;
+
+    students.forEach(s => {
+      const att = s.live_attendance;
+      const row = document.createElement('tr');
+      
+      let locBadge = '<span class="badge neutral">No Data</span>';
+      let faceBadge = '<span class="badge neutral">No Data</span>';
+      let attBadge = '<span class="badge neutral">No Data</span>';
+      let coords = '-';
+      let time = '-';
+
+      if (att) {
+        // Location
+        if (att.location_valid) {
+          locBadge = '<span class="badge success">Inside Boundary</span>';
+          inside++;
+        } else {
+          locBadge = '<span class="badge error">Outside Boundary</span>';
+        }
+        
+        // Face
+        if (att.face_match_status === 'success') {
+          faceBadge = `<span class="badge success">Verified (${Math.round(att.face_confidence * 100)}%)</span>`;
+        } else if (att.face_match_status === 'failed') {
+          faceBadge = '<span class="badge error">Failed</span>';
+        } else {
+          faceBadge = '<span class="badge warning">Not Attempted</span>';
+        }
+
+        // Attendance
+        if (att.status === 'present') {
+          attBadge = '<span class="badge success">PRESENT</span>';
+          present++;
+        } else if (att.status === 'late') {
+          attBadge = '<span class="badge warning">LATE</span>';
+          present++; // late counts as present physically
+        } else {
+          attBadge = '<span class="badge error">ABSENT</span>';
+          absent++;
+        }
+
+        coords = `${att.latitude.toFixed(5)}, ${att.longitude.toFixed(5)}`;
+        time = att.time;
+      }
+
+      row.innerHTML = `
+        <td>
+          <div style="font-weight:700; color:var(--text-primary);">${s.name}</div>
+          <div style="font-size:0.85rem; color:var(--text-secondary);">${s.student_id} | ${s.department}</div>
+        </td>
+        <td>${locBadge}</td>
+        <td>${faceBadge}</td>
+        <td>${attBadge}</td>
+        <td style="font-family:monospace; font-size:0.9rem;">${coords}</td>
+        <td>${time}</td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-inside').textContent = inside;
+    document.getElementById('stat-present').textContent = present;
+    document.getElementById('stat-absent').textContent = absent;
+  }
+
+  window.onload = () => {
+    fetchLiveTracking();
+    setInterval(fetchLiveTracking, 10000); // Auto refresh every 10 seconds
+  };
+</script>
+</body>
+</html>

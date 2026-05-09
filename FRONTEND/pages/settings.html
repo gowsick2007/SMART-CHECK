@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — Smart Attendance</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    :root {
+      --bg-main: #0a0f1e;
+      --accent-cyan: #00ffcc;
+      --accent-red: #ff4444;
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.7);
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    .settings-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 40px;
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: linear-gradient(to right, #00ffcc, #0099ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+    }
+
+    .glass-section {
+      backdrop-filter: blur(12px);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(0, 255, 204, 0.15);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      margin-top: 0;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(0, 255, 204, 0.1);
+      padding-bottom: 10px;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .setting-row:last-child {
+      border-bottom: none;
+    }
+
+    .setting-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .setting-label {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .setting-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .select-input, .text-input {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(0, 255, 204, 0.3);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: all 0.3s;
+    }
+
+    .select-input:focus, .text-input:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
+    }
+
+    .btn-action {
+      background: transparent;
+      border: 1px solid var(--accent-cyan);
+      color: var(--accent-cyan);
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-action:hover {
+      background: rgba(0, 255, 204, 0.15);
+      box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+    }
+
+    .btn-red {
+      background: transparent;
+      border: 1px solid var(--accent-red);
+      color: var(--accent-red);
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-red:hover {
+      background: rgba(255, 68, 68, 0.15);
+      box-shadow: 0 0 15px rgba(255, 68, 68, 0.3);
+    }
+
+    .info-badge {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="settings-container">
+    
+    <div class="header-row">
+      <button class="back-btn" onclick="window.history.back();" style="position: relative; left: 0; top: 0;">← Back</button>
+      <h1 class="page-title">System Settings</h1>
+      <div style="width: 80px;"></div> <!-- Spacer -->
+    </div>
+
+    <!-- Connected Location Section -->
+    <div class="glass-section">
+      <h2 class="section-title">Connected Geofence Location</h2>
+      
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Boundary Center</span>
+          <span class="setting-desc" id="current-location-address">rathinam technical campus, coimbatore</span>
+        </div>
+        <div>
+          <button class="btn-action" onclick="window.location.href='map_select.html'">Update Location</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Latitude</span>
+          <span class="setting-desc">Verified boundary center latitude coordinate</span>
+        </div>
+        <div id="location-lat" class="info-badge">—</div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Longitude</span>
+          <span class="setting-desc">Verified boundary center longitude coordinate</span>
+        </div>
+        <div id="location-lng" class="info-badge">—</div>
+      </div>
+    </div>
+
+    <!-- Attendance Radius Settings -->
+    <div class="glass-section">
+      <h2 class="section-title">Attendance Range Configuration</h2>
+      
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Geofence Radius</span>
+          <span class="setting-desc">Strict radius enforcement for automatic attendance tracking</span>
+        </div>
+        <div>
+          <select id="radius-preset" class="select-input" onchange="saveRadius()">
+            <option value="22.5">Strict Preset (22.5 meters)</option>
+            <option value="50.0">Medium Preset (50 meters)</option>
+            <option value="100.0">Wide Preset (100 meters)</option>
+            <option value="200.0">Regional Preset (200 meters)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile settings -->
+    <div class="glass-section">
+      <h2 class="section-title">Profile Settings</h2>
+      
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Student Name</span>
+          <span class="setting-desc">Your official registered university full name</span>
+        </div>
+        <div id="profile-name" style="font-weight: 600;">—</div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Department</span>
+          <span class="setting-desc">Your academic stream</span>
+        </div>
+        <div id="profile-dept" style="font-weight: 600;">—</div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Section</span>
+          <span class="setting-desc">Your assigned section cohort</span>
+        </div>
+        <div id="profile-sec" style="font-weight: 600;">—</div>
+      </div>
+    </div>
+
+    <!-- Session info -->
+    <div class="glass-section">
+      <h2 class="section-title">Session Metadata</h2>
+      
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Student Email</span>
+          <span class="setting-desc">Authentication identifier email</span>
+        </div>
+        <div id="session-email" class="info-badge">—</div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Session ID</span>
+          <span class="setting-desc">Active token prefix</span>
+        </div>
+        <div id="session-token" class="info-badge">—</div>
+      </div>
+
+      <div class="setting-row" style="margin-top: 20px;">
+        <div class="setting-info">
+          <span class="setting-label">Logout Session</span>
+          <span class="setting-desc">Securely terminate the active university session</span>
+        </div>
+        <div>
+          <button class="btn-red" onclick="triggerLogout()">Logout Account</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="../js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load stored student profile details
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const satStudent = JSON.parse(localStorage.getItem('sat_student') || '{}');
+      
+      const name = user.name || user.full_name || satStudent.name || '—';
+      const dept = user.department || satStudent.department || '—';
+      const sec = user.section || user.class_name || satStudent.class_name || '—';
+      const email = user.email || satStudent.email || '—';
+      
+      document.getElementById('profile-name').textContent = name;
+      document.getElementById('profile-dept').textContent = dept;
+      document.getElementById('profile-sec').textContent = sec;
+      document.getElementById('session-email').textContent = email;
+
+      // Load session token info safely
+      const token = localStorage.getItem('sat_token') || '—';
+      document.getElementById('session-token').textContent = token !== '—' ? (token.substring(0, 15) + '...') : '—';
+
+      // Load boundary location
+      const lastLat = localStorage.getItem('last_selected_lat') || '10.9323837';
+      const lastLng = localStorage.getItem('last_selected_lng') || '76.9770313';
+      document.getElementById('location-lat').textContent = parseFloat(lastLat).toFixed(7);
+      document.getElementById('location-lng').textContent = parseFloat(lastLng).toFixed(7);
+
+      const savedAddress = localStorage.getItem('last_selected_address') || 'rathinam technical campus, coimbatore';
+      document.getElementById('current-location-address').textContent = savedAddress;
+
+      // Load geofence radius config
+      const activeRadius = localStorage.getItem('active_radius') || '22.5';
+      const select = document.getElementById('radius-preset');
+      if (select) {
+        select.value = activeRadius;
+      }
+    });
+
+    function saveRadius() {
+      const select = document.getElementById('radius-preset');
+      if (select) {
+        const val = select.value;
+        localStorage.setItem('active_radius', val);
+        alert(`Attendance Range changed to ${val} meters!`);
+      }
+    }
+
+    function triggerLogout() {
+      if (typeof handleLogout === 'function') {
+        handleLogout();
+      } else {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+      }
+    }
+  </script>
+</body>
+</html>

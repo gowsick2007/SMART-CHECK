@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Attendance — Admin Dashboard</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .admin-wrapper { max-width: 1200px; margin: 4rem auto; padding: 0 1.5rem; display: flex; flex-direction: column; gap: 3rem; }
+    @media (min-width: 768px) {
+      /* Convert navbar to sidebar */
+      .navbar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 280px;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: flex-start;
+        gap: 3rem;
+        padding: 3rem 2rem;
+        background: rgba(10, 15, 30, 0.95);
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: none;
+        backdrop-filter: blur(20px);
+        z-index: 1000;
+      }
+      
+      .navbar-brand {
+        margin-bottom: 2rem;
+      }
+      
+      .nav-links {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+        gap: 1.25rem;
+      }
+      
+      .nav-link {
+        width: 100%;
+        padding: 0.85rem 1.25rem;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+      }
+      
+      .nav-link.active {
+        background: rgba(34, 211, 238, 0.1);
+        border: 1px solid rgba(34, 211, 238, 0.2);
+      }
+      
+      /* Shift main content area to the right */
+      .admin-wrapper {
+        margin-left: 310px !important;
+        margin-right: auto !important;
+        max-width: calc(100% - 340px) !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+    }
+    .admin-title { font-size: 2.5rem; font-family: 'Outfit', sans-serif; font-weight: 800; color: var(--accent-cyan); }
+    .stat-box { background: linear-gradient(135deg, rgba(15,25,45,0.8), rgba(10,15,30,0.8)); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 24px; padding: 2rem; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.2); transition: all 0.3s ease; }
+    .stat-box:hover { transform: translateY(-5px); box-shadow: 0 25px 50px rgba(34,211,238,0.15); }
+    .stat-val { font-size: 3rem; font-weight: 800; color: var(--accent-blue); }
+    .stat-label { font-size: 0.95rem; color: var(--text-secondary); text-transform: uppercase; margin-top: 0.5rem; font-weight: 600; letter-spacing: 1px; }
+    
+    .filter-bar { display: flex; gap: 1.5rem; align-items: center; margin-bottom: 2rem; }
+    .filter-input { background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff; padding: 1rem 1.25rem; border-radius: 12px; flex: 1; transition: all 0.3s ease; }
+    .filter-input:focus { border-color: var(--accent-cyan); box-shadow: 0 0 15px rgba(34,211,238,0.2); }
+    
+    .table-container { background: rgba(10, 15, 30, 0.6); backdrop-filter: blur(16px); border-radius: 24px; padding: 2.5rem; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    th { color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
+    
+    .badge { padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700; display: inline-block; text-transform: uppercase; }
+    .badge.green { background: rgba(16,185,129,0.1); color: var(--accent-green); border: 1px solid rgba(16,185,129,0.3); box-shadow: 0 0 10px rgba(16,185,129,0.1); }
+    .badge.red { background: rgba(239,68,68,0.1); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.3); box-shadow: 0 0 10px rgba(239,68,68,0.1); }
+    .badge.gray { background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.1); }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div style="display: flex; align-items: center; gap: 1.5rem;">
+    <button class="back-btn" onclick="window.history.back(); return false;">← Back</button>
+    <a class="navbar-brand" href="/admin_dashboard"> Smart<span>Attendance</span></a>
+  </div>
+  <div class="nav-links">
+    <a href="/admin_dashboard" class="nav-link active">Admin Dashboard</a>
+    <a href="/auto-verify" class="nav-link">Auto Verify</a>
+    <a href="admin_boundary.html" class="nav-link">Boundary Center</a>
+    <div class="nav-avatar" title="Logout" onclick="handleLogout()"></div>
+  </div>
+</nav>
+
+<div id="toast-container"></div>
+
+<div class="page-wrapper admin-wrapper">
+  
+  <div style="display:flex; justify-content:space-between; align-items:center; gap: 1rem;">
+    <div class="admin-title">Admin Attendance Portal</div>
+    <button class="btn btn-primary" style="padding: 1rem 2rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(34,211,238,0.2);" onclick="exportCSV()">Export CSV Report</button>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:2.5rem;">
+    <div class="stat-box">
+      <div class="stat-val" id="total-students">0</div>
+      <div class="stat-label">Registered Students</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="today-present" style="color:var(--accent-green);">0</div>
+      <div class="stat-label">Present Today</div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <div class="filter-bar">
+      <input type="text" id="filter-dept" class="filter-input" placeholder="Search by Department..." oninput="filterTable()" />
+      <input type="text" id="filter-class" class="filter-input" placeholder="Search by Class/Section..." oninput="filterTable()" />
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Student Details</th>
+          <th>Department / Class</th>
+          <th>GPS Verification</th>
+          <th>Face Scan Status</th>
+          <th>Attendance Status</th>
+        </tr>
+      </thead>
+      <tbody id="students-table-body">
+        <tr><td colspan="5" style="text-align:center; padding: 3rem;">Loading real-time records...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script>
+  const token = localStorage.getItem('sat_token');
+  if (!token) {
+    window.location.replace('/');
+  }
+
+  let studentList = [];
+  let boundaryMap = {};
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initAdmin();
+  });
+
+  function initAdmin() {
+    loadSummary();
+    loadStudents();
+    setInterval(loadBoundaryStatus, 20000); // Poll every 20s
+  }
+
+  async function loadSummary() {
+    try {
+      const res = await fetch('/api/admin/today-summary', { headers: {'Authorization': `Bearer ${token}`} });
+      const data = await res.json();
+      if(data.success) {
+        document.getElementById('total-students').textContent = data.total_students;
+        document.getElementById('today-present').textContent = data.present_count;
+      }
+    } catch(e) {}
+  }
+
+  async function loadStudents() {
+    try {
+      const res = await fetch('/api/admin/all-students', { headers: {'Authorization': `Bearer ${token}`} });
+      const data = await res.json();
+      if(data.success) {
+        studentList = data.students;
+        await loadBoundaryStatus();
+      }
+    } catch(e) {}
+  }
+
+  async function loadBoundaryStatus() {
+    try {
+      const res = await fetch('/api/admin/boundary-status', { headers: {'Authorization': `Bearer ${token}`} });
+      const data = await res.json();
+      if(data.success) {
+        boundaryMap = {};
+        data.status.forEach(st => boundaryMap[st.student_id] = st);
+        renderTable();
+      }
+    } catch(e) {}
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('students-table-body');
+    tbody.innerHTML = '';
+    
+    if (studentList.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 3rem;">No student records found.</td></tr>';
+      return;
+    }
+
+    studentList.forEach(s => {
+      const st = boundaryMap[s.student_id];
+      let insideHtml = '<span class="badge gray">Unknown</span>';
+      let faceHtml = '<span class="badge gray">Not Scanned</span>';
+      let finalHtml = '<span class="badge red">Absent</span>';
+
+      if (st) {
+        insideHtml = st.gps_status === 'inside' ? '<span class="badge green">INSIDE</span>' : '<span class="badge red">OUTSIDE</span>';
+        faceHtml = st.face_status === 'verified' ? '<span class="badge green">VERIFIED</span>' : '<span class="badge red">FAILED</span>';
+        finalHtml = st.final_status === 'present' ? '<span class="badge green">PRESENT</span>' : '<span class="badge red">ABSENT</span>';
+      }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div style="font-weight:700; color:var(--text-primary); font-size:1.1rem;">${s.name}</div>
+          <div style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.25rem;">${s.student_id} | ${s.email}</div>
+        </td>
+        <td>
+          <div style="font-weight:600;">${s.department}</div>
+          <div style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">${s.class_name || '—'}</div>
+        </td>
+        <td>${insideHtml}</td>
+        <td>${faceHtml}</td>
+        <td>${finalHtml}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function filterTable() {
+    const deptVal = document.getElementById('filter-dept').value.toLowerCase();
+    const classVal = document.getElementById('filter-class').value.toLowerCase();
+    const rows = document.querySelectorAll('#students-table-body tr');
+
+    rows.forEach(row => {
+      const cells = row.getElementsByTagName('td');
+      if (cells.length < 2) return;
+      
+      const detailsText = cells[0].textContent.toLowerCase();
+      const deptClassText = cells[1].textContent.toLowerCase();
+      
+      const matchesDept = detailsText.includes(deptVal) || deptClassText.includes(deptVal);
+      const matchesClass = deptClassText.includes(classVal);
+      
+      if (matchesDept && matchesClass) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  function exportCSV() {
+    let csv = "Student ID,Name,Department,Class,Inside Boundary,Face Verified,Final Status\n";
+    studentList.forEach(s => {
+      const st = boundaryMap[s.student_id] || {};
+      csv += `${s.student_id},${s.name},${s.department},${s.class_name||''},${st.gps_status||'unknown'},${st.face_status||'unknown'},${st.final_status||'absent'}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'student_attendance_report.csv');
+    a.click();
+    showToast('Report downloaded successfully!', 'success');
+  }
+</script>
+</body>
+</html>

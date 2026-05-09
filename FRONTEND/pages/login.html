@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Attendance — Login</title>
+  <meta name="description" content="Smart Attendance System — Secure AI-powered attendance with Face Recognition & GPS Geo-Fence." />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    /* Split screen specific layout styling */
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      min-height: 100vh;
+      background: var(--bg-primary);
+      font-family: 'Inter', sans-serif;
+    }
+    .login-container {
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+    }
+    .left-panel {
+      flex: 1;
+      background: linear-gradient(135deg, #0a0f1e, #1a1f35);
+      border-right: 1px solid rgba(0, 255, 204, 0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px;
+    }
+    .right-panel {
+      flex: 1;
+      background: #0d1117;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+    .branding-box {
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .branding-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 36px;
+      font-weight: 900;
+      color: #ffffff;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .branding-tagline {
+      font-size: 18px;
+      color: var(--accent-cyan);
+      margin-bottom: 40px;
+      font-weight: 600;
+    }
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    .feature-item i {
+      color: var(--accent-cyan);
+      font-size: 18px;
+    }
+    .form-card {
+      width: 100%;
+      max-width: 420px;
+      padding: 40px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: var(--shadow-card);
+    }
+    .form-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+    .form-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 30px;
+    }
+    .login-tabs {
+      display: flex;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 25px;
+    }
+    .login-tab {
+      flex: 1;
+      text-align: center;
+      padding: 12px 0;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .login-tab.active {
+      color: #ffffff;
+      font-weight: 700;
+      border-bottom: 2px solid var(--accent-cyan);
+    }
+    .form-control-container {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .form-control-container i {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(255, 255, 255, 0.3);
+      font-size: 14px;
+    }
+    .form-control-with-icon {
+      width: 100%;
+      height: 48px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: white;
+      padding: 0 16px 0 45px;
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+    .form-control-with-icon:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.1);
+    }
+    .btn-submit {
+      height: 48px;
+      width: 100%;
+      background: var(--gradient-cyan);
+      border: none;
+      border-radius: 10px;
+      color: #0a0f1e;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .btn-submit:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+    .btn-submit:active {
+      transform: translateY(0);
+    }
+    @media (max-width: 900px) {
+      .left-panel {
+        display: none;
+      }
+      .right-panel {
+        flex: 1;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<div class="login-container">
+  <!-- Left Panel -->
+  <div class="left-panel">
+    <div class="branding-box">
+      <div class="branding-logo">
+        <i class="fa-solid fa-graduation-cap" style="color: var(--accent-cyan);"></i> SmartAttendance
+      </div>
+      <div class="branding-tagline">Smart Attendance System</div>
+      <div class="feature-list">
+        <div class="feature-item">
+          <i class="fa-solid fa-circle-check"></i> GPS-based location verification
+        </div>
+        <div class="feature-item">
+          <i class="fa-solid fa-circle-check"></i> AI face recognition attendance
+        </div>
+        <div class="feature-item">
+          <i class="fa-solid fa-circle-check"></i> Real-time boundary monitoring
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="right-panel">
+    <div class="form-card">
+      <div class="form-title">Sign In</div>
+      <div class="form-subtitle">Access your attendance dashboard</div>
+
+      <!-- Login Tabs -->
+      <div class="login-tabs">
+        <button class="login-tab active" id="tab-login" onclick="switchLoginType('student')">Student</button>
+        <button class="login-tab" onclick="switchLoginType('admin')">Admin</button>
+        <button class="login-tab" onclick="switchLoginType('creator')">Creator</button>
+      </div>
+
+      <!-- Dynamic Role Alert Indicator -->
+      <div id="role-indicator" class="alert alert-success" style="display:block; text-align:center; margin-bottom: 20px; font-weight: bold; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--accent-green);">
+        🎓 STUDENT ACCESS
+      </div>
+
+      <!-- Single form that uses auth.js handleLogin -->
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <!-- Hidden role selection input mapped to original select to maintain full compatibility -->
+        <select id="login-role" style="display:none;">
+          <option value="student" selected>Student</option>
+          <option value="admin">Administrator</option>
+        </select>
+
+        <div class="form-control-container">
+          <i class="fa-solid fa-envelope" id="identifier-icon"></i>
+          <input type="text" id="login-identifier" class="form-control-with-icon"
+                 placeholder="e.g. CS2024001 or student@college.com" required autocomplete="username" />
+        </div>
+
+        <div class="form-control-container">
+          <i class="fa-solid fa-lock"></i>
+          <input type="password" id="login-password" class="form-control-with-icon"
+                 placeholder="Enter your password" required autocomplete="current-password" />
+        </div>
+
+        <div id="login-error" class="alert alert-error" style="display:none; margin-bottom: 20px;"></div>
+
+        <button type="submit" class="btn-submit" id="login-btn">
+          <span id="login-btn-text">Sign In</span>
+          <span id="login-spinner" class="spinner" style="display:none"></span>
+        </button>
+
+        <p style="text-align:center; margin-top:25px; font-size:14px; color:var(--text-secondary)">
+          Don't have an account?
+          <a href="register.html" style="color: var(--accent-cyan); font-weight: 700; text-decoration: none;">Register here</a>
+        </p>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script>
+  if (localStorage.getItem('sat_token')) {
+    window.location.replace('/dashboard');
+  }
+
+  const identifierInput = document.getElementById('login-identifier');
+  const roleSelect = document.getElementById('login-role');
+  const indicator = document.getElementById('role-indicator');
+  const iconInput = document.getElementById('identifier-icon');
+
+  function switchLoginType(type) {
+    document.querySelectorAll('.login-tab').forEach(tab => tab.classList.remove('active'));
+    
+    if (type === 'student') {
+      event.target.classList.add('active');
+      roleSelect.value = 'student';
+      identifierInput.placeholder = 'e.g. CS2024001 or student@college.com';
+      iconInput.className = 'fa-solid fa-envelope';
+    } else if (type === 'admin') {
+      event.target.classList.add('active');
+      roleSelect.value = 'admin';
+      identifierInput.placeholder = 'e.g. admin@college.com';
+      iconInput.className = 'fa-solid fa-shield-halved';
+    } else if (type === 'creator') {
+      event.target.classList.add('active');
+      roleSelect.value = 'admin'; // mapping to admin role on backend
+      identifierInput.value = 'gowsicklitheswaran@gmail.com';
+      identifierInput.placeholder = 'gowsicklitheswaran@gmail.com';
+      iconInput.className = 'fa-solid fa-key';
+    }
+    updateRoleIndicator();
+  }
+
+  function updateRoleIndicator() {
+    const value = identifierInput.value.trim().toLowerCase();
+    if (value === 'gowsicklitheswaran@gmail.com') {
+      indicator.className = 'alert alert-success';
+      indicator.style.background = 'rgba(234, 179, 8, 0.1)';
+      indicator.style.border = '1px solid rgba(234, 179, 8, 0.4)';
+      indicator.style.color = '#fbbf24';
+      indicator.textContent = '👑 CREATOR ACCESS GRANTED';
+    } else {
+      if (roleSelect.value === 'admin') {
+        indicator.className = 'alert alert-info';
+        indicator.style.background = 'rgba(147, 51, 234, 0.1)';
+        indicator.style.border = '1px solid rgba(147, 51, 234, 0.4)';
+        indicator.style.color = '#c084fc';
+        indicator.textContent = '🛡️ ADMIN ACCESS';
+      } else {
+        indicator.className = 'alert alert-success';
+        indicator.style.background = 'rgba(16, 185, 129, 0.1)';
+        indicator.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+        indicator.style.color = 'var(--accent-green)';
+        indicator.textContent = '🎓 STUDENT ACCESS';
+      }
+    }
+  }
+
+  identifierInput.addEventListener('input', updateRoleIndicator);
+</script>
+</body>
+</html>

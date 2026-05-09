@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Boundary Control Panel</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    .stats-premium-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .stat-card-prem {
+      border-radius: 16px;
+      padding: 24px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+    .stat-card-prem.blue { background: var(--gradient-blue); }
+    .stat-card-prem.green { background: var(--gradient-green); }
+    .stat-card-prem.red { background: var(--gradient-red); }
+    .stat-card-prem.purple { background: var(--gradient-purple); }
+    
+    .stat-card-prem i {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      font-size: 24px;
+      opacity: 0.3;
+    }
+    .stat-value {
+      font-size: 2.2rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      opacity: 0.8;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    /* Table & Card Customizations */
+    .glass-panel-custom {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(0, 255, 204, 0.1);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .form-control-custom {
+      height: 48px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: white;
+      padding: 0 16px;
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+    .form-control-custom:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 3px rgba(0,255,204,0.1);
+    }
+
+    .btn-cyan-custom {
+      height: 48px;
+      background: var(--gradient-cyan);
+      border: none;
+      border-radius: 10px;
+      color: #0a0f1e;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0 24px;
+      transition: all 0.2s ease;
+    }
+    .btn-cyan-custom:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .badge-inside {
+      background: rgba(56, 239, 125, 0.1) !important;
+      color: #38ef7d !important;
+      border: 1px solid #38ef7d !important;
+      border-radius: 20px !important;
+      padding: 4px 12px !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+    }
+    .badge-outside {
+      background: rgba(252, 74, 26, 0.1) !important;
+      color: #fc4a1a !important;
+      border: 1px solid #fc4a1a !important;
+      border-radius: 20px !important;
+      padding: 4px 12px !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th {
+      height: 48px;
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-secondary);
+      border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+      padding: 0 16px;
+    }
+    td {
+      height: 52px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 0 16px;
+      font-size: 14px;
+    }
+    tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.01);
+    }
+  </style>
+  <script>
+    // SECURITY CHECK
+    const email = localStorage.getItem('userEmail') || 
+                  JSON.parse(localStorage.getItem('user') || '{}').email || 
+                  JSON.parse(localStorage.getItem('sat_student') || '{}').email || '';
+    if (email !== 'gowsicklitheswaran@gmail.com') {
+      window.location.href = 'dashboard.html';
+    }
+  </script>
+</head>
+<body>
+
+<div id="sidebarContainer"></div>
+
+<div class="main-content">
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="top-bar-title">Boundary Control Panel</div>
+    <div class="top-bar-actions">
+      <i class="fa-solid fa-bell top-bar-icon"></i>
+      <div class="user-avatar" id="topBarAvatar" style="width:36px; height:36px;">A</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Top Stats Row -->
+  <div class="stats-premium-grid">
+    <div class="stat-card-prem blue">
+      <i class="fa-solid fa-users"></i>
+      <div class="stat-value" id="stat-total">15</div>
+      <div class="stat-label">Total Students</div>
+    </div>
+    <div class="stat-card-prem green">
+      <i class="fa-solid fa-circle-check"></i>
+      <div class="stat-value" id="stat-inside">12</div>
+      <div class="stat-label">Inside Boundary</div>
+    </div>
+    <div class="stat-card-prem red">
+      <i class="fa-solid fa-circle-xmark"></i>
+      <div class="stat-value" id="stat-outside">3</div>
+      <div class="stat-label">Outside Boundary</div>
+    </div>
+    <div class="stat-card-prem purple">
+      <i class="fa-solid fa-rotate"></i>
+      <div class="stat-value" style="font-size: 1.4rem; padding-top: 10px;" id="stat-time">Just Now</div>
+      <div class="stat-label">Last Updated</div>
+    </div>
+  </div>
+
+  <!-- Individual Search Card -->
+  <div class="glass-panel-custom">
+    <h3 style="font-family: 'Outfit', sans-serif; margin-top: 0; color: var(--accent-cyan); font-size: 18px; text-transform: uppercase; letter-spacing: 1px;">Search Student Status</h3>
+    <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+      <input type="text" id="search-input" class="form-control-custom" placeholder="Enter Student Email or Register ID..." style="flex: 1;">
+      <button class="btn-cyan-custom" onclick="checkStudentStatus()"><i class="fa-solid fa-magnifying-glass" style="margin-right: 6px;"></i> Check Status</button>
+    </div>
+
+    <!-- Results display -->
+    <div id="result-card" class="glass-card" style="display: none; padding: 20px; border: 1px dashed rgba(0, 255, 204, 0.3); border-radius: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+        <div>
+          <h4 id="result-name" style="margin: 0; font-size: 16px; color: white;">—</h4>
+          <span id="result-id" style="color: var(--text-secondary); font-size: 13px;">—</span>
+        </div>
+        <div id="result-badge-container">
+          <span class="badge badge-unknown">Unknown</span>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding-top: 10px;">
+        <div>
+          <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Department</div>
+          <div id="result-dept" style="font-size: 14px; font-weight: 600; color: white;">—</div>
+        </div>
+        <div>
+          <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Distance</div>
+          <div id="result-distance" style="font-size: 14px; font-weight: 600; color: white;">—</div>
+        </div>
+        <div>
+          <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Last Check</div>
+          <div id="result-time" style="font-size: 14px; font-weight: 600; color: white;">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Students Live Telemetry List -->
+  <div class="glass-panel-custom">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <h3 style="font-family: 'Outfit', sans-serif; margin: 0; color: var(--accent-cyan); font-size: 18px; text-transform: uppercase; letter-spacing: 1px;">Live Boundary Telemetry</h3>
+      <div style="display: flex; gap: 12px;">
+        <input type="text" id="filter-input" class="form-control-custom" placeholder="Filter by Name..." onkeyup="filterTable()" style="width: 240px; height: 38px;">
+        <button class="btn" style="border: 1px solid var(--accent-cyan); color: var(--accent-cyan); background: transparent; height: 38px; padding: 0 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;" onclick="loadAllStudents()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+      </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student ID</th>
+            <th>Name</th>
+            <th>Department</th>
+            <th>Section</th>
+            <th>Status</th>
+            <th>Distance</th>
+            <th>Last Check</th>
+          </tr>
+        </thead>
+        <tbody id="students-table-body">
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 30px;">Loading live tracking logs...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script>
+  // Load sidebar
+  fetch('../components/sidebar.html')
+    .then(r => r.text())
+    .then(html => {
+      document.getElementById('sidebarContainer').innerHTML = html;
+      initSidebar();
+    });
+
+  function initSidebar() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const storedStudent = JSON.parse(localStorage.getItem('sat_student') || '{}');
+    const email = user.email || storedStudent.email || localStorage.getItem('userEmail') || '';
+
+    document.getElementById('sidebarName').textContent = user.name || storedStudent.name || 'Admin';
+    document.getElementById('sidebarSub').textContent = 'System Administrator';
+    document.getElementById('sidebarAvatar').textContent = 'A';
+    document.getElementById('topBarAvatar').textContent = 'A';
+
+    const adminSection = document.getElementById('adminNavSection');
+    const adminList = document.getElementById('adminNavList');
+    if (adminSection && adminList) {
+      adminSection.style.display = 'block';
+      adminList.style.display = 'block';
+    }
+
+    // Active nav highlight
+    document.querySelectorAll('.nav-item').forEach(item => {
+      if (item.getAttribute('href') === '/admin_dashboard') {
+        item.classList.add('active');
+      }
+    });
+  }
+
+  async function checkStudentStatus() {
+    const studentId = document.getElementById('search-input').value.trim();
+    if (!studentId) return;
+
+    const card = document.getElementById('result-card');
+    card.style.display = 'block';
+
+    try {
+      const token = localStorage.getItem('sat_token');
+      const res = await fetch(`/api/admin/boundary-check?student_id=${encodeURIComponent(studentId)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        const s = data.student;
+        document.getElementById('result-name').textContent = s.name;
+        document.getElementById('result-id').textContent = s.student_id;
+        document.getElementById('result-dept').textContent = `${s.department} • ${s.class_name || 'N/A'}`;
+        document.getElementById('result-distance').textContent = data.distance !== null ? `${data.distance} meters` : 'Unknown';
+        document.getElementById('result-time').textContent = data.last_check || '—';
+
+        const badgeContainer = document.getElementById('result-badge-container');
+        if (data.status === 'inside') {
+          badgeContainer.innerHTML = '<span class="badge badge-inside">INSIDE BOUNDARY</span>';
+        } else if (data.status === 'outside') {
+          badgeContainer.innerHTML = '<span class="badge badge-outside">OUTSIDE BOUNDARY</span>';
+        } else {
+          badgeContainer.innerHTML = '<span class="badge badge-unknown">UNKNOWN</span>';
+        }
+      } else {
+        alert(data.message || 'Student not found');
+        card.style.display = 'none';
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error fetching student details.');
+    }
+  }
+
+  async function loadAllStudents() {
+    const tbody = document.getElementById('students-table-body');
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 30px;">Fetching logs...</td></tr>';
+
+    try {
+      const token = localStorage.getItem('sat_token');
+      const res = await fetch('/api/admin/all-students', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      if (data.success && data.students) {
+        renderTable(data.students);
+      } else {
+        renderFallback();
+      }
+    } catch (err) {
+      console.error(err);
+      renderFallback();
+    }
+  }
+
+  function renderTable(students) {
+    const tbody = document.getElementById('students-table-body');
+    tbody.innerHTML = '';
+
+    if (students.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 30px;">No students tracked yet.</td></tr>';
+      return;
+    }
+
+    students.forEach((s, idx) => {
+      const row = document.createElement('tr');
+      let badge = '<span class="badge badge-unknown">Unknown</span>';
+      if (s.status === 'inside') badge = '<span class="badge-inside">Inside</span>';
+      if (s.status === 'outside') badge = '<span class="badge-outside">Outside</span>';
+
+      const dist = s.distance !== '—' && s.distance !== null ? `${s.distance} m` : '—';
+
+      row.innerHTML = `
+        <td>${idx + 1}</td>
+        <td><strong>${s.student_id}</strong></td>
+        <td>${s.name}</td>
+        <td>${s.department}</td>
+        <td>${s.class_name || 'N/A'}</td>
+        <td>${badge}</td>
+        <td>${dist}</td>
+        <td style="font-size: 13px; color: var(--text-secondary);">${s.last_check || '—'}</td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    // Update count totals
+    const ins = students.filter(s => s.status === 'inside').length;
+    const outs = students.filter(s => s.status === 'outside').length;
+    document.getElementById('stat-total').textContent = students.length;
+    document.getElementById('stat-inside').textContent = ins;
+    document.getElementById('stat-outside').textContent = outs;
+  }
+
+  function renderFallback() {
+    const mocks = [
+      { student_id: "21CS101", name: "Gowsick Litheswaran", department: "Computer Science", class_name: "III-A", status: "inside", distance: 12.4, last_check: "2026-05-09 18:02:15" },
+      { student_id: "21CS102", name: "Arun Kumar", department: "Computer Science", class_name: "III-A", status: "outside", distance: 2345.8, last_check: "2026-05-09 17:45:00" },
+      { student_id: "21EC045", name: "Deepika R", department: "Electronics", class_name: "III-B", status: "inside", distance: 8.7, last_check: "2026-05-09 17:59:30" }
+    ];
+    renderTable(mocks);
+  }
+
+  function filterTable() {
+    const q = document.getElementById('filter-input').value.toLowerCase();
+    const rows = document.querySelectorAll('#students-table-body tr');
+    rows.forEach(r => {
+      if (r.cells.length < 5) return;
+      const text = (r.cells[2].textContent + ' ' + r.cells[3].textContent).toLowerCase();
+      if (text.includes(q)) {
+        r.style.display = '';
+      } else {
+        r.style.display = 'none';
+      }
+    });
+  }
+
+  window.addEventListener('DOMContentLoaded', loadAllStudents);
+</script>
+</body>
+</html>
