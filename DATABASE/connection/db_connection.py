@@ -156,20 +156,27 @@ def _ensure_database_and_tables():
                     email VARCHAR(100) UNIQUE NOT NULL,
                     phone VARCHAR(20),
                     department VARCHAR(100),
+                    year VARCHAR(50),
                     class_name VARCHAR(50),
                     password_hash VARCHAR(255) NOT NULL,
+                    role VARCHAR(20) DEFAULT 'student',
+                    is_active INTEGER DEFAULT 1,
                     face_enrolled BOOLEAN DEFAULT FALSE,
                     face_descriptor TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS sessions (
+                CREATE TABLE IF NOT EXISTS login_sessions (
                     id SERIAL PRIMARY KEY,
-                    token VARCHAR(255) UNIQUE NOT NULL,
                     student_id VARCHAR(50) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    expires_at TIMESTAMP
+                    session_token VARCHAR(255) UNIQUE NOT NULL,
+                    ip_address VARCHAR(45),
+                    user_agent TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    expires_at TIMESTAMP NOT NULL,
+                    logout_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
             cur.execute("""
@@ -208,7 +215,22 @@ def _ensure_database_and_tables():
                 ALTER TABLE auto_verify_log ADD COLUMN IF NOT EXISTS final_status VARCHAR(20);
             """)
             cur.execute("""
+                ALTER TABLE students ADD COLUMN IF NOT EXISTS year VARCHAR(50);
+            """)
+            cur.execute("""
                 ALTER TABLE students ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'student';
+            """)
+            cur.execute("""
+                ALTER TABLE students ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1;
+            """)
+            cur.execute("""
+                ALTER TABLE students ADD COLUMN IF NOT EXISTS fingerprint_template TEXT;
+            """)
+            cur.execute("""
+                ALTER TABLE students ADD COLUMN IF NOT EXISTS fingerprint_credential_id TEXT;
+            """)
+            cur.execute("""
+                ALTER TABLE students ADD COLUMN IF NOT EXISTS fingerprint_public_key TEXT;
             """)
             cur.execute("""
                 ALTER TABLE attendance ADD COLUMN IF NOT EXISTS recorded_by_role VARCHAR(20) DEFAULT 'student';
@@ -230,6 +252,58 @@ def _ensure_database_and_tables():
                     longitude DOUBLE PRECISION,
                     updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
+            """)
+            cur.execute("""
+                ALTER TABLE login_sessions ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1;
+            """)
+            cur.execute("""
+                ALTER TABLE login_sessions ADD COLUMN IF NOT EXISTS logout_at TIMESTAMP;
+            """)
+            cur.execute("""
+                ALTER TABLE students ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
+            """)
+            cur.execute("""
+                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS marked_by_name VARCHAR(100);
+            """)
+            cur.execute("""
+                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+            """)
+            cur.execute("""
+                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS grace_timer_started_at TIMESTAMP;
+            """)
+            cur.execute("""
+                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS grace_timer_passed BOOLEAN DEFAULT FALSE;
+            """)
+            cur.execute("""
+                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS fingerprint_verified BOOLEAN DEFAULT FALSE;
+            """)
+            cur.execute("""
+                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS face_enabled BOOLEAN DEFAULT TRUE;
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS system_config (
+                    setting_key VARCHAR(100) PRIMARY KEY,
+                    setting_value VARCHAR(100) NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            # Add unique constraint on attendance (student_id, date, recorded_by_role)
+            cur.execute("""
+                DO $$ 
+                BEGIN 
+                    -- Drop old constraints if they exist
+                    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'attendance_student_id_date_key') THEN
+                        ALTER TABLE attendance DROP CONSTRAINT attendance_student_id_date_key;
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_student_date') THEN
+                        ALTER TABLE attendance DROP CONSTRAINT unique_student_date;
+                    END IF;
+                    
+                    -- Add new refined constraint
+                    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'attendance_student_id_date_role_key') THEN
+                        ALTER TABLE attendance ADD CONSTRAINT attendance_student_id_date_role_key UNIQUE (student_id, date, recorded_by_role);
+                    END IF;
+                END $$;
             """)
             cur.execute("""
                 UPDATE students SET role = 'creator' WHERE email = 'gowsicklitheswaran@gmail.com';

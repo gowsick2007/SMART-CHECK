@@ -4,6 +4,8 @@
 
 import os
 
+CREATOR_PASSWORD = 'gowsi2007'
+
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "smart_attendance_super_secret_key_2024")
     DEBUG = True

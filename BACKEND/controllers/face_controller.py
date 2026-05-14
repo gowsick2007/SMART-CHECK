@@ -46,16 +46,98 @@ def enroll_face(current_student=None):
 def verify_face(current_student=None):
     """
     POST /api/face/verify
-    Body: { face_descriptor: [...128 floats...] }
-    Verifies live face descriptor against stored.
+    Handles BOTH face_descriptor payloads AND raw base64 image data for complete backward compatibility.
+    Automatically finalizes attendance commit if matches.
     """
-    data = request.get_json()
+    data = request.get_json() or {}
+    student_id = current_student["student_id"] if current_student else data.get("student_id")
+    
+    if not student_id:
+        return jsonify({"success": False, "message": "Authentication required."}), 401
+        
     descriptor = data.get("face_descriptor")
+    image_data = data.get("image") or data.get("image_base64")
+    
+    # 1. Extraction strategy
+    if not descriptor:
+        if not image_data:
+            return jsonify({"success": False, "message": "Face image or descriptor required."}), 400
+        
+        try:
+            # Strip potential data:image/... preamble
+            if "," in image_data:
+                image_data = image_data.split(",", 1)[1]
+            image_bytes = base64.b64decode(image_data)
+            
+            from AI_FACE_MODULE.face_encoding_storage import encode_face_from_base64
+            extracted = encode_face_from_base64(image_bytes)
+            if extracted is None:
+                 return jsonify({"success": False, "message": "No recognizable face detected in camera frame."}), 400
+            descriptor = extracted.tolist()
+        except Exception as e:
+            return jsonify({"success": False, "message": f"Image processing error: {str(e)}"}), 400
 
     if not descriptor or len(descriptor) != 128:
-        return jsonify({"success": False, "message": "Valid 128-d descriptor required."}), 400
+        return jsonify({"success": False, "message": "Valid 128-d biometric descriptor required."}), 400
 
-    result = FaceService.verify_face(current_student["student_id"], descriptor)
+    # 2. Run Comparison
+    result = FaceService.verify_face(student_id, descriptor)
+    
+    # 3. Final System Finalization Save
+    if result.get("matched"):
+        from DATABASE.connection.db_connection import get_connection, execute_query
+        import datetime
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Fetch existing partial data
+        cursor.execute("""
+            SELECT location_valid, fingerprint_verified 
+            FROM attendance 
+            WHERE student_id = %s AND date = CURRENT_DATE
+        """, (student_id,))
+        row = cursor.fetchone()
+        
+        is_inside = bool(row[0]) if row else False
+        fingerprint_verified = bool(row[1]) if row else False
+
+        # Fetch global fingerprint toggle
+        res_fp = execute_query("SELECT setting_value FROM system_config WHERE setting_key = 'fingerprint_verification_enabled'", fetch="one")
+        fp_on = (res_fp["setting_value"] == "ON") if res_fp else False
+        
+        # RULE: 
+        # If fingerprint OFF: face_match (True here) + inside_boundary = PRESENT
+        # If fingerprint ON: face_match (True here) + inside_boundary + fingerprint_verified = PRESENT
+        if fp_on:
+            success_mark = (is_inside and fingerprint_verified)
+        else:
+            success_mark = is_inside
+            
+        final_status = "present" if success_mark else "absent"
+        
+        # Commit final verification override
+        cursor.execute("""
+            UPDATE attendance 
+            SET status = %s, 
+                face_match_status = 'success',
+                remarks = %s,
+                marked_at = CURRENT_TIMESTAMP
+            WHERE student_id = %s AND date = CURRENT_DATE
+        """, (
+            final_status, 
+            "Auto Verified" if final_status == "present" else "Verification failed (Biometric or Boundary issue).",
+            student_id
+        ))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        result["success"] = True 
+        result["status"] = final_status
+    else:
+         result["success"] = False
+         result["message"] = result.get("message", "Face match failed.")
+         
     return jsonify(result), 200
 
 

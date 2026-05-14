@@ -7,6 +7,14 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="../css/style.css">
   <style>
+    :root {
+      --bg-primary: #0a0f1e;
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255,255,255,0.6);
+      --accent-cyan: #00ffcc;
+      --gradient-cyan: linear-gradient(135deg, #00ffcc, #00b3ff);
+      --shadow-card: 0 8px 32px rgba(0,0,0,0.3);
+    }
     body {
       background-color: var(--bg-primary);
       color: var(--text-primary);
@@ -15,6 +23,48 @@
       padding: 0;
       min-height: 100vh;
     }
+    
+    /* Custom suggestions dropdown styling */
+    .suggestions-container {
+      position: absolute;
+      top: 100%; left: 0; right: 0;
+      background: rgba(20, 25, 45, 0.95);
+      border: 1px solid rgba(0, 255, 204, 0.3);
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      max-height: 250px;
+      overflow-y: auto;
+      z-index: 999;
+      backdrop-filter: blur(12px);
+      display: none;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .suggestion-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .suggestion-item:hover {
+      background: rgba(0, 255, 204, 0.1);
+    }
+    .suggestion-item strong { display: block; color: white; margin-bottom: 2px; }
+    .suggestion-item span { font-size: 12px; color: var(--text-secondary); }
+    
+    /* Custom inline feedback toast placeholder */
+    #search-feedback {
+      display: none; 
+      padding: 10px 14px; 
+      border-radius: 8px; 
+      font-size: 13px; 
+      font-weight: 500; 
+      margin-bottom: 15px;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity:1; transform: translateY(0); } }
+    .fb-success { background: rgba(56,239,125,0.15); border: 1px solid #38ef7d; color: #38ef7d; }
+    .fb-error { background: rgba(255,77,77,0.15); border: 1px solid #ff4d4d; color: #ff4d4d; }
+    .fb-info { background: rgba(0,255,204,0.15); border: 1px solid #00ffcc; color: #00ffcc; }
 
     .stats-premium-grid {
       display: grid;
@@ -192,43 +242,69 @@
       <div class="stat-value" style="font-size: 1.4rem; padding-top: 10px;" id="stat-time">Just Now</div>
       <div class="stat-label">Last Updated</div>
     </div>
-  </div>
+  </div>  <!-- Individual Search Card -->
+  <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; margin-bottom: 30px;">
+    
+    <!-- Left: Search Student -->
+    <div class="glass-panel-custom" style="margin-bottom: 0;">
+      <h3 style="font-family: 'Outfit', sans-serif; margin-top: 0; color: var(--accent-cyan); font-size: 18px; text-transform: uppercase; letter-spacing: 1px;">Search Student Status</h3>
+      
+      <div id="search-feedback"></div>
 
-  <!-- Individual Search Card -->
-  <div class="glass-panel-custom">
-    <h3 style="font-family: 'Outfit', sans-serif; margin-top: 0; color: var(--accent-cyan); font-size: 18px; text-transform: uppercase; letter-spacing: 1px;">Search Student Status</h3>
-    <div style="display: flex; gap: 16px; margin-bottom: 20px;">
-      <input type="text" id="search-input" class="form-control-custom" placeholder="Enter Student Email or Register ID..." style="flex: 1;">
-      <button class="btn-cyan-custom" onclick="checkStudentStatus()"><i class="fa-solid fa-magnifying-glass" style="margin-right: 6px;"></i> Check Status</button>
-    </div>
-
-    <!-- Results display -->
-    <div id="result-card" class="glass-card" style="display: none; padding: 20px; border: 1px dashed rgba(0, 255, 204, 0.3); border-radius: 12px;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
-        <div>
-          <h4 id="result-name" style="margin: 0; font-size: 16px; color: white;">—</h4>
-          <span id="result-id" style="color: var(--text-secondary); font-size: 13px;">—</span>
+      <div style="position: relative; display: flex; gap: 16px; margin-bottom: 20px;">
+        <div style="flex: 1; position: relative;">
+           <input type="text" id="search-input" class="form-control-custom" placeholder="Enter Name, ID or Email..." style="width:100%; box-sizing:border-box;" autocomplete="off">
+           <div id="search-suggestions" class="suggestions-container"></div>
         </div>
-        <div id="result-badge-container">
-          <span class="badge badge-unknown">Unknown</span>
+        <button class="btn-cyan-custom" style="min-width:100px;" onclick="checkStudentStatus()"><i class="fa-solid fa-magnifying-glass"></i> Check</button>
+      </div>
+
+      <div id="result-card" class="glass-card" style="display: none; padding: 20px; border: 1px dashed rgba(0, 255, 204, 0.3); border-radius: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+          <div>
+            <h4 id="result-name" style="margin: 0; font-size: 16px; color: white;">—</h4>
+            <span id="result-id" style="color: var(--text-secondary); font-size: 13px;">—</span>
+          </div>
+          <div id="result-badge-container"><span class="badge badge-unknown">Unknown</span></div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding-top: 10px;">
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Department</div>
+            <div id="result-dept" style="font-size: 14px; font-weight: 600; color: white;">—</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Distance</div>
+            <div id="result-distance" style="font-size: 14px; font-weight: 600; color: white;">—</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Last Check</div>
+            <div id="result-time" style="font-size: 14px; font-weight: 600; color: white;">—</div>
+          </div>
         </div>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding-top: 10px;">
-        <div>
-          <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Department</div>
-          <div id="result-dept" style="font-size: 14px; font-weight: 600; color: white;">—</div>
+    </div>
+
+    <!-- Right: Update Boundary Settings (NEW) -->
+    <div class="glass-panel-custom" style="margin-bottom: 0;">
+      <h3 style="font-family: 'Outfit', sans-serif; margin-top: 0; color: var(--accent-cyan); font-size: 18px; text-transform: uppercase; letter-spacing: 1px;">Update Campus Boundary</h3>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; gap: 10px;">
+          <input type="number" id="bound-lat" step="any" class="form-control-custom" placeholder="Latitude (e.g. 13.0827)" style="flex: 1;">
+          <input type="number" id="bound-lng" step="any" class="form-control-custom" placeholder="Longitude (e.g. 80.2707)" style="flex: 1;">
         </div>
-        <div>
-          <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Distance</div>
-          <div id="result-distance" style="font-size: 14px; font-weight: 600; color: white;">—</div>
+        <div style="display: flex; gap: 10px;">
+          <input type="number" id="bound-radius" class="form-control-custom" placeholder="Radius in Meters (e.g. 50)" style="flex: 1;">
+          <button class="btn-cyan-custom" onclick="updateGlobalBoundary()" style="flex: 0.5;">Update Boundary</button>
         </div>
-        <div>
-          <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Last Check</div>
-          <div id="result-time" style="font-size: 14px; font-weight: 600; color: white;">—</div>
+        <div id="map" style="width: 100%; height: 260px; margin-top: 10px; border-radius: 12px; border: 1px solid rgba(0,255,204,0.2); position: relative;">
+           <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: rgba(255,255,255,0.4);">Loading Google Map...</div>
         </div>
+        <p style="font-size: 11px; color: var(--text-muted); margin: 10px 0 0 0;"><i class="fa-solid fa-circle-info"></i> Click map or type manually to set new system coordinates.</p>
       </div>
     </div>
+
   </div>
+</div>
 
   <!-- Students Live Telemetry List -->
   <div class="glass-panel-custom">
@@ -299,9 +375,71 @@
     });
   }
 
+  function showFeedback(msg, type = 'info') {
+    const fb = document.getElementById('search-feedback');
+    if (!fb) return;
+    fb.textContent = msg;
+    fb.className = `fb-${type}`;
+    fb.style.display = 'block';
+    setTimeout(() => { fb.style.display = 'none'; }, 4000);
+  }
+
+  // LIVE SEARCH TYPEAHEAD LOGIC
+  const searchInput = document.getElementById('search-input');
+  const suggestionsBox = document.getElementById('search-suggestions');
+  let searchTimeout = null;
+
+  searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      const q = e.target.value.trim();
+      if (!q || q.length < 2) {
+          suggestionsBox.style.display = 'none';
+          return;
+      }
+
+      searchTimeout = setTimeout(async () => {
+          try {
+              const token = localStorage.getItem('sat_token');
+              const res = await fetch(`/api/admin/search-students?q=${encodeURIComponent(q)}`, {
+                  headers: { 'Authorization': `Bearer ${token}` }
+              });
+              const data = await res.json();
+              if (data.success && data.students && data.students.length > 0) {
+                  suggestionsBox.innerHTML = data.students.map(s => `
+                      <div class="suggestion-item" onclick="selectSuggestion('${s.student_id}')">
+                          <strong>${s.name}</strong>
+                          <span>ID: ${s.student_id} | ${s.email}</span><br/>
+                          <span>${s.department} • ${s.section || 'N/A'}</span>
+                      </div>
+                  `).join('');
+                  suggestionsBox.style.display = 'block';
+              } else {
+                  suggestionsBox.innerHTML = '<div style="padding:15px; color:var(--text-secondary); font-size:13px;">No students found.</div>';
+                  suggestionsBox.style.display = 'block';
+              }
+          } catch (e) {
+              console.error("Search error", e);
+          }
+      }, 300);
+  });
+
+  // Close dropdown if clicking outside
+  document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+          suggestionsBox.style.display = 'none';
+      }
+  });
+
+  window.selectSuggestion = function(sid) {
+      searchInput.value = sid;
+      suggestionsBox.style.display = 'none';
+      checkStudentStatus();
+  };
+
   async function checkStudentStatus() {
     const studentId = document.getElementById('search-input').value.trim();
     if (!studentId) return;
+    suggestionsBox.style.display = 'none';
 
     const card = document.getElementById('result-card');
     card.style.display = 'block';
@@ -322,34 +460,72 @@
         document.getElementById('result-time').textContent = data.last_check || '—';
 
         const badgeContainer = document.getElementById('result-badge-container');
-        if (data.status === 'inside') {
-          badgeContainer.innerHTML = '<span class="badge badge-inside">INSIDE BOUNDARY</span>';
-        } else if (data.status === 'outside') {
-          badgeContainer.innerHTML = '<span class="badge badge-outside">OUTSIDE BOUNDARY</span>';
+        
+        // Map logic explicitly
+        if (data.status === 'inside' || data.status === 'present') {
+          badgeContainer.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+              <span class="badge badge-inside">INSIDE BOUNDARY</span>
+              <button class="btn-cyan-custom" style="height: 32px; font-size: 12px; padding: 0 12px; background: #38ef7d; color:#0a0f1e;" onclick="manualMarkAttendance('${s.student_id}', 'present')">MARK PRESENT</button>
+            </div>`;
+        } else if (data.status === 'outside' || data.status === 'absent') {
+          badgeContainer.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+              <span class="badge badge-outside">OUTSIDE BOUNDARY</span>
+              <button class="btn-cyan-custom" style="height: 32px; font-size: 12px; padding: 0 12px; background: #fc4a1a; color:white;" onclick="manualMarkAttendance('${s.student_id}', 'absent')">MARK ABSENT</button>
+            </div>`;
         } else {
-          badgeContainer.innerHTML = '<span class="badge badge-unknown">UNKNOWN</span>';
+          badgeContainer.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+               <span class="badge badge-unknown">UNKNOWN POSITION</span>
+               <button class="btn-cyan-custom" style="height: 32px; font-size: 12px; padding: 0 12px;" onclick="manualMarkAttendance('${s.student_id}', 'present')">FORCE PRESENT</button>
+            </div>`;
         }
       } else {
-        alert(data.message || 'Student not found');
+        showFeedback(data.message || 'Student not found', 'error');
         card.style.display = 'none';
       }
     } catch (err) {
       console.error(err);
-      alert('Error fetching student details.');
+      showFeedback('Failed to sync with system server.', 'error');
+    }
+  }
+
+  async function manualMarkAttendance(studentId, status) {
+    try {
+      const token = localStorage.getItem('sat_token');
+      const res = await fetch('/api/admin/verify-attendance', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ student_id: studentId, status: status })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback(`System successfully registered: ${status.toUpperCase()}.`, 'success');
+        loadAllStudents(); // refresh list background
+      } else {
+        // Special UI handling for existing record if message reflects that? Actually handled transparently now via UPSERT.
+        showFeedback(data.message || 'Update failed', 'info');
+      }
+    } catch (err) {
+      console.error(err);
+      showFeedback('Constraint Error bypassed but Server was unreachable.', 'error');
     }
   }
 
   async function loadAllStudents() {
     const tbody = document.getElementById('students-table-body');
+    if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 30px;">Fetching logs...</td></tr>';
-
     try {
       const token = localStorage.getItem('sat_token');
       const res = await fetch('/api/admin/all-students', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
-
       if (data.success && data.students) {
         renderTable(data.students);
       } else {
@@ -363,41 +539,55 @@
 
   function renderTable(students) {
     const tbody = document.getElementById('students-table-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
-
     if (students.length === 0) {
       tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 30px;">No students tracked yet.</td></tr>';
       return;
     }
-
     students.forEach((s, idx) => {
       const row = document.createElement('tr');
       let badge = '<span class="badge badge-unknown">Unknown</span>';
-      if (s.status === 'inside') badge = '<span class="badge-inside">Inside</span>';
-      if (s.status === 'outside') badge = '<span class="badge-outside">Outside</span>';
-
+      if (s.status === 'inside' || s.status === 'present') badge = '<span class="badge-inside">PRESENT</span>';
+      if (s.status === 'outside' || s.status === 'absent') badge = '<span class="badge-outside">ABSENT</span>';
       const dist = s.distance !== '—' && s.distance !== null ? `${s.distance} m` : '—';
-
-      row.innerHTML = `
-        <td>${idx + 1}</td>
-        <td><strong>${s.student_id}</strong></td>
-        <td>${s.name}</td>
-        <td>${s.department}</td>
-        <td>${s.class_name || 'N/A'}</td>
-        <td>${badge}</td>
-        <td>${dist}</td>
-        <td style="font-size: 13px; color: var(--text-secondary);">${s.last_check || '—'}</td>
-      `;
+      row.innerHTML = `<td>${idx + 1}</td><td><strong>${s.student_id}</strong></td><td>${s.name}</td><td>${s.department}</td><td>${s.class_name || 'N/A'}</td><td>${badge}</td><td>${dist}</td><td style="font-size: 13px; color: var(--text-secondary);">${s.last_check || '—'}</td>`;
       tbody.appendChild(row);
     });
-
-    // Update count totals
     const ins = students.filter(s => s.status === 'inside').length;
     const outs = students.filter(s => s.status === 'outside').length;
-    document.getElementById('stat-total').textContent = students.length;
-    document.getElementById('stat-inside').textContent = ins;
-    document.getElementById('stat-outside').textContent = outs;
+    if(document.getElementById('stat-total')) document.getElementById('stat-total').textContent = students.length;
+    if(document.getElementById('stat-inside')) document.getElementById('stat-inside').textContent = ins;
+    if(document.getElementById('stat-outside')) document.getElementById('stat-outside').textContent = outs;
   }
+
+  async function updateGlobalBoundary() {
+    const lat = document.getElementById('bound-lat').value;
+    const lng = document.getElementById('bound-lng').value;
+    const radius = document.getElementById('bound-radius').value;
+    if (!lat || !lng || !radius) {
+      showFeedback("Please fill all boundary fields.", 'error');
+      return;
+    }
+    try {
+      const res = await fetch('/set-boundary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude: parseFloat(lat), longitude: parseFloat(lng), radius: parseFloat(radius), address: "Updated Campus Boundary" })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback("Campus boundary updated successfully!", 'success');
+        loadAllStudents();
+      } else {
+        showFeedback("Error: " + data.message, 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showFeedback("Failed to update boundary.", 'error');
+    }
+  }
+
 
   function renderFallback() {
     const mocks = [
@@ -423,6 +613,78 @@
   }
 
   window.addEventListener('DOMContentLoaded', loadAllStudents);
+
+  // Google Maps Logic Integration
+  let map;
+  let marker;
+  let circle;
+  
+  function initMap() {
+    console.log("Admin Map initializing...");
+    const defaultLat = 10.9323;
+    const defaultLng = 76.9770;
+    
+    // Set input fields by default if they exist
+    document.getElementById('bound-lat').value = defaultLat;
+    document.getElementById('bound-lng').value = defaultLng;
+    document.getElementById('bound-radius').value = 22.5;
+
+    map = new google.maps.Map(document.getElementById("map"), {
+      center: { lat: defaultLat, lng: defaultLng },
+      zoom: 16,
+      mapTypeId: 'roadmap',
+      disableDefaultUI: true,
+      zoomControl: true,
+      styles: [
+         { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+         { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+         { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+         { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] }
+      ]
+    });
+
+    marker = new google.maps.Marker({
+      position: { lat: defaultLat, lng: defaultLng },
+      map: map,
+      draggable: true,
+      animation: google.maps.Animation.DROP
+    });
+
+    circle = new google.maps.Circle({
+      map: map,
+      radius: 22.5,
+      fillColor: '#00ffcc',
+      fillOpacity: 0.2,
+      strokeColor: '#00ffcc',
+      strokeOpacity: 0.8,
+      strokeWeight: 2
+    });
+    circle.bindTo('center', marker, 'position');
+
+    // Listeners to update text inputs immediately
+    const updateCoords = (latLng) => {
+        document.getElementById('bound-lat').value = latLng.lat().toFixed(7);
+        document.getElementById('bound-lng').value = latLng.lng().toFixed(7);
+    };
+
+    map.addListener("click", (e) => {
+        marker.setPosition(e.latLng);
+        updateCoords(e.latLng);
+    });
+
+    marker.addListener("dragend", () => {
+        updateCoords(marker.getPosition());
+    });
+    
+    // Radius listener
+    document.getElementById('bound-radius').addEventListener('input', (e) => {
+        const rad = parseFloat(e.target.value);
+        if (!isNaN(rad)) circle.setRadius(rad);
+    });
+  }
+  
+  window.initMap = initMap;
 </script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAgYnd-U-LaIcA1tTGmgHrUd7epzLuTeKU&libraries=places&callback=initMap"></script>
 </body>
 </html>

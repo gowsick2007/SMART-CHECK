@@ -1,435 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Smart Attendance — Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Attendance — Premium Dashboard</title>
+  
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="../css/style.css" />
-  <style>
-    /* Premium Dashboard Styles */
-    body {
-      margin: 0;
-      padding: 0;
-      background: var(--bg-primary);
-      color: var(--text-primary);
-      font-family: 'Inter', sans-serif;
-    }
-    
-    .welcome-banner {
-      background: linear-gradient(135deg, #1a1f35, #0d1117);
-      border: 1px solid rgba(0, 255, 204, 0.1);
-      border-radius: 16px;
-      padding: 32px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 25px;
-      box-shadow: var(--shadow-card);
-    }
-    .welcome-left {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .welcome-label {
-      font-size: 14px;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    .welcome-name {
-      font-family: 'Outfit', sans-serif;
-      font-size: 32px;
-      font-weight: 800;
-      color: #ffffff;
-    }
-    .welcome-meta {
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-    .welcome-right {
-      text-align: right;
-    }
-    .welcome-date {
-      font-family: 'Outfit', sans-serif;
-      font-size: 24px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.8);
-    }
-    .welcome-day {
-      color: var(--accent-cyan);
-      font-size: 14px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-    }
-
-    .student-details-card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(0, 255, 204, 0.15);
-      backdrop-filter: blur(10px);
-      border-radius: 16px;
-      padding: 24px;
-      margin-bottom: 30px;
-    }
-    .student-details-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-    .detail-item {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .detail-item .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      letter-spacing: 1px;
-    }
-    .detail-item .value {
-      font-size: 14px;
-      color: #ffffff;
-      font-weight: 600;
-    }
-
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-      margin-bottom: 30px;
-    }
-    .stat-card-premium {
-      border-radius: 16px;
-      padding: 24px 28px;
-      color: white;
-      position: relative;
-      overflow: hidden;
-      box-shadow: var(--shadow-card);
-    }
-    .stat-card-premium.purple { background: var(--gradient-purple); }
-    .stat-card-premium.green { background: var(--gradient-green); }
-    .stat-card-premium.red { background: var(--gradient-red); }
-    
-    .stat-card-premium i {
-      position: absolute;
-      top: 24px;
-      right: 28px;
-      font-size: 24px;
-      opacity: 0.3;
-    }
-    .stat-card-value {
-      font-size: 2.8rem;
-      font-weight: 700;
-      line-height: 1.2;
-    }
-    .stat-card-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      opacity: 0.8;
-      font-weight: 700;
-      margin-top: 4px;
-    }
-
-    /* GPS Boundary Card Customization */
-    .gps-boundary-card-premium {
-      border-radius: 16px;
-      padding: 24px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      box-shadow: var(--shadow-card);
-      text-align: center;
-    }
-    .gps-boundary-visual-premium {
-      position: relative;
-      width: 200px;
-      height: 200px;
-      margin: 0 auto 20px;
-    }
-    .gps-ring-premium {
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      border: 2px solid rgba(0, 255, 204, 0.15);
-    }
-    .gps-ring-outer-prem {
-      border-color: rgba(0, 255, 204, 0.1);
-      animation: rotateRing 8s linear infinite;
-    }
-    .gps-ring-inner-prem {
-      inset: 30px;
-      border-color: rgba(0, 255, 204, 0.3);
-      animation: rotateRingReverse 6s linear infinite;
-    }
-    .gps-core-premium {
-      position: absolute;
-      inset: 60px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(0, 255, 204, 0.2), rgba(0, 255, 204, 0.05));
-      border: 2px solid rgba(0, 255, 204, 0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .gps-core-premium i {
-      font-size: 28px;
-      color: var(--accent-cyan);
-    }
-
-    /* GPS Status text state styling */
-    .gps-boundary-card-premium.outside .gps-ring-premium { border-color: rgba(252,74,26,0.15); }
-    .gps-boundary-card-premium.outside .gps-core-premium { border-color: var(--accent-red); background: rgba(252,74,26,0.15); }
-    .gps-boundary-card-premium.outside .gps-core-premium i { color: var(--accent-red); }
-    
-    .gps-boundary-card-premium.inside .gps-ring-premium { border-color: rgba(56,239,125,0.15); }
-    .gps-boundary-card-premium.inside .gps-core-premium { border-color: var(--accent-green); background: rgba(56,239,125,0.15); }
-    .gps-boundary-card-premium.inside .gps-core-premium i { color: var(--accent-green); }
-
-    .glowing-green-dot {
-      width: 8px; height: 8px; background-color: var(--accent-green);
-      border-radius: 50%; box-shadow: 0 0 8px var(--accent-green);
-      display: inline-block;
-      margin-right: 6px;
-    }
-
-    @keyframes rotateRing { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    @keyframes rotateRingReverse { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
-  </style>
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-<!-- Hidden components for GPS Permission overlay -->
-<div id="gps-permission-overlay" style="position: fixed; inset: 0; z-index: 9999; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; flex-direction: column;">
-  <div class="card" style="max-width: 550px; width: 90%; padding: 3.5rem; text-align: center; border: 1px solid var(--accent-cyan); box-shadow: 0 0 40px rgba(34, 211, 238, 0.15); background: rgba(10, 15, 30, 0.8); backdrop-filter: blur(12px); border-radius: 16px;">
-    <div style="font-size: 3rem; margin-bottom: 1.5rem; color: var(--accent-cyan);">
-      <i class="fa-solid fa-location-dot" style="font-size: 64px; filter: drop-shadow(0 0 10px var(--accent-cyan));"></i>
-    </div>
-    <h2 style="color: var(--text-primary); font-family: 'Outfit', sans-serif; font-size: 2rem; margin-bottom: 1rem;">Location Access Required</h2>
-    <p style="color: var(--text-secondary); margin-bottom: 2.5rem; font-size: 1.1rem; line-height: 1.6;">This attendance system requires secure location verification before dashboard access.</p>
-    <div style="display: flex; flex-direction: column; gap: 1rem;">
-      <button id="enable-gps-btn" class="btn btn-primary btn-lg" style="width: 100%; box-shadow: 0 0 20px rgba(34, 211, 238, 0.4); font-size: 1.1rem;" onclick="requestGpsAccess()">Enable Location Access</button>
-      <button class="btn btn-ghost btn-lg" style="width: 100%; font-size: 1.1rem;" onclick="openLocationPicker()">Choose Boundary Location</button>
-    </div>
-    <div id="gps-perm-error" style="display:none; margin-top: 1.5rem;">
-      <div style="color: var(--accent-red); font-weight: bold; margin-bottom: 1rem;">Location access denied. Dashboard access blocked.</div>
-      <button class="btn btn-ghost" onclick="requestGpsAccess()">Retry Permission</button>
-    </div>
-  </div>
-</div>
+  <div class="bg-animate"></div>
+  <div id="toast-container" class="toast-container"></div>
 
-<!-- Left Sidebar container -->
-<div id="sidebarContainer"></div>
-
-<!-- Main Content Area -->
-<div class="main-content" id="dashboard-content" style="display: none;">
-  <!-- Top Bar -->
-  <div class="top-bar">
-    <div class="top-bar-title">Dashboard</div>
-    <div class="top-bar-actions">
-      <div id="top-left-location-status" class="top-location-status" style="display: none; background: rgba(56, 239, 125, 0.1); border: 1px solid rgba(56, 239, 125, 0.3); padding: 6px 14px; border-radius: 20px; color: var(--accent-green); font-size: 13px; font-weight: 600;">
-        <span class="glowing-green-dot"></span>
-        <span id="top-left-location-text">Location Connected</span>
-      </div>
-      <i class="fa-solid fa-bell top-bar-icon"></i>
-      <div class="user-avatar" id="topBarAvatar" onclick="handleLogout()" style="cursor: pointer; width: 36px; height: 36px;">S</div>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <i class="fa-solid fa-shield-halved"></i>
+      <span>SmartCheck</span>
     </div>
-  </div>
-
-  <!-- Row 1: Welcome Banner Card -->
-  <div class="welcome-banner">
-    <div class="welcome-left">
-      <div class="welcome-label">Welcome back,</div>
-      <div class="welcome-name" id="student-name">Loading Student...</div>
-      <div class="welcome-meta" id="student-meta">—</div>
-    </div>
-    <div class="welcome-right">
-      <div class="welcome-date" id="date-display">Loading...</div>
-      <div class="welcome-day" id="clock">00:00:00</div>
-    </div>
-  </div>
-
-  <!-- Student Details Card -->
-  <div class="student-details-card">
-    <div class="student-details-grid">
-      <div class="detail-item">
-        <span class="label">Full Name</span>
-        <span class="value" id="detailName">—</span>
-      </div>
-      <div class="detail-item">
-        <span class="label">Register Number</span>
-        <span class="value" id="detailRegNo">—</span>
-      </div>
-      <div class="detail-item">
-        <span class="label">Department</span>
-        <span class="value" id="detailDept">—</span>
-      </div>
-      <div class="detail-item">
-        <span class="label">Class Section</span>
-        <span class="value" id="detailSection">—</span>
-      </div>
-      <div class="detail-item" style="grid-column: 1 / -1;">
-        <span class="label">Registered Email</span>
-        <span class="value" id="detailEmail">—</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Row 2: Stats Row -->
-  <div class="stats-row">
-    <div class="stat-card-premium purple">
-      <i class="fa-solid fa-chart-line"></i>
-      <div class="stat-card-value" id="donut-pct">0%</div>
-      <div class="stat-card-label">Attendance Rate</div>
-    </div>
-    <div class="stat-card-premium green">
-      <i class="fa-solid fa-check"></i>
-      <div class="stat-card-value" id="quick-present">0</div>
-      <div class="stat-card-label">Total Present</div>
-    </div>
-    <div class="stat-card-premium red">
-      <i class="fa-solid fa-circle-xmark"></i>
-      <div class="stat-card-value" id="quick-absent">0</div>
-      <div class="stat-card-label">Total Absent</div>
-    </div>
-  </div>
-
-  <!-- Row 4: Live Location Verification Card -->
-  <div class="gps-boundary-card-premium" id="gps-card-container">
-    <div style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 25px;">
-      Live Location Verification
-    </div>
-
-    <div class="gps-boundary-visual-premium" id="gps-boundary-visual">
-      <div class="gps-ring-premium gps-ring-outer-prem"></div>
-      <div class="gps-ring-premium gps-ring-inner-prem"></div>
-      <div class="gps-core-premium">
-        <i class="fa-solid fa-location-dot"></i>
-      </div>
-    </div>
-
-    <div class="gps-status-text" id="gps-status-text" style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">REQUESTING LOCATION</div>
-    <div class="gps-subtext" id="gps-subtext" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 20px;">Waiting for high-accuracy GPS signal…</div>
-    <div class="gps-distance-badge" id="gps-distance-badge" style="display:none; margin-bottom: 20px; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);"></div>
     
-    <div style="display: flex; gap: 16px; justify-content: center; max-width: 400px; margin: 0 auto;">
-      <button id="continue-face-btn" class="btn btn-primary" style="display:none; width: 100%; height: 48px; border-radius: 10px; font-weight: 700;" onclick="proceedToFaceScan()">Continue to Attendance</button>
-      <button class="btn btn-ghost" id="updateLocationBtn" style="width: 100%; height: 48px; border-radius: 10px; font-weight: 700; border: 1px solid var(--accent-cyan); color: var(--accent-cyan);" onclick="window.location.href='map_select.html'">Update Location</button>
+    <nav class="nav-menu">
+      <a href="dashboard.html" class="nav-link active"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
+      <a href="history.html" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i><span>History</span></a>
+      <a href="auto_verification.html" class="nav-link"><i class="fa-solid fa-bolt"></i><span>Auto Verify</span></a>
+      <a href="profile.html" class="nav-link"><i class="fa-solid fa-user-graduate"></i><span>Profile</span></a>
+      <a href="settings.html" class="nav-link"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+    </nav>
+
+    <div style="margin-top: auto;">
+      <a href="#" onclick="handleLogout()" class="nav-link" style="color: var(--accent-red);"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a>
     </div>
+  </aside>
 
-    <!-- Hidden compatibility markers for scripts -->
-    <div class="gps-indicator loading" id="gps-indicator" style="display:none;"><span class="gps-dot"></span><span id="gps-text"></span></div>
-    <div style="display:none;"><span id="check-gps"></span><span id="check-face-enrolled"></span><span id="check-face-live"></span><div id="today-badge"></div><div id="student-avatar"></div></div>
-  </div>
-</div>
+  <main class="main-content">
+    
+    <!-- Top Header -->
+    <section style="display: flex; align-items: center; gap: 30px; margin-bottom: 40px;">
+      <div id="user-avatar" class="avatar-initial">G</div>
+      <div style="flex-grow: 1;">
+        <div id="admin-label-container" style="display: none; margin-bottom: 5px;">
+          <span style="font-size: 10px; color: #00ff88; text-transform: uppercase; letter-spacing: 2px; font-weight: 800; background: rgba(0,255,136,0.1); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(0,255,136,0.2);">ADMIN MODE</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 14px; text-transform: uppercase; letter-spacing: 2px;">Welcome Back,</p>
+        <h1 id="student-name" style="font-family: 'Outfit', sans-serif; font-size: 38px; font-weight: 800;">Loading...</h1>
+      </div>
+      <div style="text-align: right;">
+        <div id="live-clock" style="font-size: 32px; font-weight: 900; color: var(--accent-cyan);">00:00:00</div>
+        <div id="live-date" style="color: var(--text-muted); font-size: 14px;">Sunday, 10th May 2026</div>
+      </div>
+    </section>
 
-<!-- Map Picker Modal -->
-<div id="map-picker-modal" class="map-modal-overlay">
-  <div class="map-modal-card" style="max-width: 800px;">
-    <div class="map-modal-title">Choose Boundary Center</div>
-    <div style="position: relative; margin-bottom: 0.5rem;">
-      <input type="text" id="map-search-input" class="form-control" placeholder="Search college, address or place..." style="width: 100%; padding: 1rem;" />
+    <div style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 25px;">
+      
+      <!-- Geofence Status Card (MODIFIED) -->
+      <div class="glass-card col-12" id="geofence-card" style="grid-column: span 12; display: flex; align-items: center; justify-content: space-between; padding: 40px; position: relative; overflow: hidden;">
+        <div style="display: flex; align-items: center; gap: 30px; z-index: 2;">
+          <div class="radar-container" id="geofence-radar">
+            <div class="radar-sweep"></div>
+            <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;">
+              <i id="geofence-icon" class="fa-solid fa-shield-halved" style="font-size: 32px; color: var(--accent-cyan);"></i>
+            </div>
+          </div>
+          <div>
+            <h2 id="boundaryStatus" style="font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 900; letter-spacing: 1px;">CHECKING GEOFENCE...</h2>
+            <div style="display: flex; gap: 15px; align-items: center; margin-top: 10px;">
+              <div id="boundary-badge" class="badge gray">INITIALIZING...</div>
+              <div style="color: var(--text-muted); font-size: 14px; font-weight: 600;">
+                Distance from boundary: <span id="boundary-distance" style="color: var(--accent-cyan);">0.0m</span>
+              </div>
+            </div>
+            <div id="grace-timer-container" style="display:none; margin-top:12px; padding:8px 15px; background:rgba(255,77,77,0.15); border:1px solid var(--accent-red); border-radius:8px; font-size:13px; color:#ff8c8c; font-weight:700; align-items:center; gap:8px;">
+                <i class="fa-solid fa-hourglass-half fa-spin"></i> 
+                OUTSIDE BOUNDARY GRACE PERIOD: <span id="grace-countdown" style="color:white; font-family:monospace; font-size:15px;">05:00</span>
+            </div>
+            <p id="geofence-subtext" style="color: var(--text-secondary); margin-top: 10px;">Establishing secure GPS connection...</p>
+          </div>
+        </div>
+        <div id="geofence-visual" class="pulse-status" style="width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--accent-cyan); display: flex; align-items: center; justify-content: center; z-index: 2;">
+          <i class="fa-solid fa-location-dot" style="font-size: 40px; color: var(--accent-cyan);"></i>
+        </div>
+        <!-- Background Glow Layer -->
+        <div id="boundary-glow" style="position: absolute; inset: 0; opacity: 0.1; transition: all 0.5s ease; pointer-events: none;"></div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="glass-card" style="grid-column: span 4; text-align: center;">
+        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;">Attendance Rate</div>
+        <div id="total-attendance" style="font-size: 48px; font-weight: 900; color: var(--accent-cyan);">0%</div>
+        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; margin-top: 15px; overflow: hidden;">
+          <div id="attendance-progress" style="width: 0%; height: 100%; background: var(--accent-cyan); box-shadow: 0 0 10px var(--accent-cyan);"></div>
+        </div>
+      </div>
+
+      <div class="glass-card" style="grid-column: span 4; text-align: center;">
+        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;">Next Auto-Check</div>
+        <div id="auto-check-timer" style="font-size: 48px; font-weight: 900; color: var(--accent-blue);">29:55</div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">Silent Background Sync</p>
+      </div>
+
+      <div class="glass-card" style="grid-column: span 4; text-align: center;">
+        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;">Verification Result</div>
+        <div id="verificationStatus" style="font-size: 24px; font-weight: 900; color: var(--accent-green); margin-top: 15px;">SUCCESSFUL</div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 10px;">Last Sync: Just Now</p>
+      </div>
+
+      <!-- Chart Card -->
+      <div class="glass-card col-12" style="grid-column: span 12;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+          <h3 style="font-family: 'Outfit', sans-serif;">Verification Activity</h3>
+          <div style="display: flex; gap: 10px;">
+            <span class="badge badge-present">Weekly</span>
+          </div>
+        </div>
+        <div style="height: 300px;">
+          <canvas id="attendanceChart"></canvas>
+        </div>
+      </div>
+
     </div>
-    <div class="map-container" id="google-map-container" style="height: 500px;"></div>
-    <div class="map-controls">
-      <button class="btn btn-ghost" onclick="closeLocationPicker()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSelectedLocation()">Save Location</button>
-    </div>
-  </div>
-</div>
+  </main>
 
-<!-- Scripts -->
-<script src="https://maps.googleapis.com/maps/api/js?key=&libraries=places&callback=initMap" async defer></script>
-<script src="../js/auth.js"></script>
-<script src="../js/location.js"></script>
-<script src="../js/face.js"></script>
-<script src="../js/attendance.js"></script>
-<script>
-  // Load reusable left sidebar
-  fetch('../components/sidebar.html')
-    .then(r => r.text())
-    .then(html => {
-      document.getElementById('sidebarContainer').innerHTML = html;
-      initSidebar();
-    });
-
-  function initSidebar() {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const storedStudent = JSON.parse(localStorage.getItem('sat_student') || '{}');
-    const email = user.email || storedStudent.email || localStorage.getItem('userEmail') || '';
-
-    document.getElementById('sidebarName').textContent = user.name || storedStudent.name || 'Student';
-    document.getElementById('sidebarSub').textContent = (user.department || storedStudent.department || '') + ' · ' + (user.section || storedStudent.class_section || '');
-    document.getElementById('sidebarAvatar').textContent = (user.name || storedStudent.name || 'S').charAt(0).toUpperCase();
-    document.getElementById('topBarAvatar').textContent = (user.name || storedStudent.name || 'S').charAt(0).toUpperCase();
-
-    // Admin section visibility
-    const adminSection = document.getElementById('adminNavSection');
-    const adminList = document.getElementById('adminNavList');
-    if (adminSection && adminList) {
-      if (email === 'gowsicklitheswaran@gmail.com') {
-        adminSection.style.display = 'block';
-        adminList.style.display = 'block';
-      } else {
-        adminSection.style.display = 'none';
-        adminList.style.display = 'none';
-      }
-    }
-
-    // Active nav highlight
-    document.querySelectorAll('.nav-item').forEach(item => {
-      if (item.getAttribute('href') === '/student_dashboard') {
-        item.classList.add('active');
-      }
-    });
-  }
-
-  // Session guard
-  const stObj = getStoredStudent();
-  if (!stObj || !localStorage.getItem('sat_token')) {
-    window.location.replace('/');
-  } else {
-    const role = stObj.role || 'student';
-    if (role === 'creator') {
-      window.location.replace('/creator_dashboard');
-    } else if (role === 'admin') {
-      window.location.replace('/admin_dashboard');
-    }
-  }
-
-  // Populate student details
-  const userObj = JSON.parse(localStorage.getItem('user') || '{}');
-  const storedStudent = getStoredStudent() || {};
-  document.getElementById('detailName').textContent = userObj.name || userObj.full_name || storedStudent.name || '—';
-  document.getElementById('detailRegNo').textContent = userObj.student_id || userObj.register_number || storedStudent.student_id || '—';
-  document.getElementById('detailDept').textContent = userObj.department || storedStudent.department || '—';
-  document.getElementById('detailSection').textContent = userObj.section || userObj.class_name || storedStudent.class_section || '—';
-  document.getElementById('detailEmail').textContent = userObj.email || storedStudent.email || '—';
-
-  // Fetch summary attendance rate
-  document.addEventListener('DOMContentLoaded', () => {
-    const token = localStorage.getItem('sat_token');
-    fetch('/api/attendance/summary', { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(res => res.json())
-      .then(data => {
-        if(data.success && data.summary) {
-          const s = data.summary;
-          const pres = (s.present_count || 0) + (s.late_count || 0);
-          const abs = s.absent_count || 0;
-          const tot = s.total || 0;
-          document.getElementById('quick-present').textContent = pres;
-          document.getElementById('quick-absent').textContent = abs;
-          let pct = tot > 0 ? Math.round((pres/tot)*100) : 0;
-          document.getElementById('donut-pct').textContent = pct + '%';
-        }
-      });
-  });
-</script>
-
-<button class="settings-fab" onclick="window.location.href='settings.html'" title="Settings" style="display: none;">
-  ⚙
-</button>
+  <script src="../js/auth.js"></script>
+  <script src="../js/auto_verification.js"></script>
+  <script src="../js/dashboard.js"></script>
 </body>
 </html>

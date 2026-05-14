@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cyber Verification — Smart Attendance</title>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    :root {
+      --scan-color: var(--accent-cyan);
+    }
+    
+    .face-verification-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .scanner-header {
+      text-align: center;
+      margin-bottom: 40px;
+      animation: fadeInDown 0.8s ease-out;
+    }
+
+    .scanner-header h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 38px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #fff 0%, var(--accent-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+
+    .scan-viewfinder {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      aspect-ratio: 4/3;
+      margin: 0 auto;
+      background: #000;
+      border-radius: 40px;
+      border: 2px solid rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .scan-viewfinder.is-scanning {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 40px rgba(0, 255, 204, 0.25);
+    }
+
+    .scan-viewfinder.success {
+      border-color: var(--accent-green);
+      box-shadow: 0 0 60px rgba(56, 239, 125, 0.3);
+    }
+
+    .scan-viewfinder.failed {
+      border-color: var(--accent-red);
+      box-shadow: 0 0 60px rgba(255, 77, 77, 0.3);
+    }
+
+    #camera-preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* Mirror effect */
+    }
+
+    /* Cyber Overlays */
+    .overlay-grid {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(0, 255, 204, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 204, 0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      opacity: 0.3;
+    }
+
+    .scan-corners {
+      position: absolute;
+      inset: 40px;
+      pointer-events: none;
+    }
+
+    .scan-corners::before, .scan-corners::after,
+    .scan-corners span::before, .scan-corners span::after {
+      content: '';
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border-color: var(--accent-cyan);
+      border-style: solid;
+      opacity: 0.5;
+      transition: all 0.3s ease;
+    }
+
+    /* TL */ .scan-corners::before { top: 0; left: 0; border-width: 4px 0 0 4px; border-top-left-radius: 20px; }
+    /* TR */ .scan-corners::after { top: 0; right: 0; border-width: 4px 4px 0 0; border-top-right-radius: 20px; }
+    /* BL */ .scan-corners span::before { bottom: 0; left: 0; border-width: 0 0 4px 4px; border-bottom-left-radius: 20px; }
+    /* BR */ .scan-corners span::after { bottom: 0; right: 0; border-width: 0 4px 4px 0; border-bottom-right-radius: 20px; }
+
+    .is-scanning .scan-corners::before, .is-scanning .scan-corners::after,
+    .is-scanning .scan-corners span::before, .is-scanning .scan-corners span::after {
+      opacity: 1;
+      box-shadow: 0 0 15px var(--accent-cyan);
+    }
+
+    .success .scan-corners::before, .success .scan-corners::after,
+    .success .scan-corners span::before, .success .scan-corners span::after {
+      border-color: var(--accent-green);
+      box-shadow: 0 0 20px var(--accent-green);
+    }
+
+    .failed .scan-corners::before, .failed .scan-corners::after,
+    .failed .scan-corners span::before, .failed .scan-corners span::after {
+      border-color: var(--accent-red);
+      box-shadow: 0 0 20px var(--accent-red);
+    }
+
+    .cyber-scanner-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(to right, transparent, var(--accent-cyan), transparent);
+      box-shadow: 0 0 20px var(--accent-cyan);
+      z-index: 5;
+      display: none;
+    }
+
+    .is-scanning .cyber-scanner-line {
+      display: block;
+      animation: scanMove 2.5s linear infinite;
+    }
+
+    @keyframes scanMove {
+      0% { top: 0; opacity: 0; }
+      5% { opacity: 1; }
+      95% { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 24px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 50px;
+      border: 1px solid var(--glass-border);
+      margin-top: 30px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+
+    .is-scanning .status-badge { color: var(--accent-cyan); border-color: var(--accent-cyan); box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
+    .success .status-badge { color: var(--accent-green); border-color: var(--accent-green); }
+    .failed .status-badge { color: var(--accent-red); border-color: var(--accent-red); }
+
+    .pulse-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      height: 300px;
+      border: 2px solid var(--accent-cyan);
+      border-radius: 50%;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .is-scanning .pulse-ring {
+      animation: cyberPulse 2s infinite;
+    }
+
+    @keyframes cyberPulse {
+      0% { width: 250px; height: 250px; opacity: 0.5; }
+      100% { width: 500px; height: 500px; opacity: 0; }
+    }
+
+    @keyframes fadeInDown {
+      from { transform: translateY(-30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-animate"></div>
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Sidebar (same as dashboard) -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <i class="fa-solid fa-shield-halved"></i>
+      <span>SmartCheck</span>
+    </div>
+    <nav class="nav-menu">
+      <a href="dashboard.html" class="nav-link"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
+      <a href="history.html" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i><span>History</span></a>
+      <a href="auto_verification.html" class="nav-link"><i class="fa-solid fa-bolt"></i><span>Auto Verify</span></a>
+      <a href="profile.html" class="nav-link"><i class="fa-solid fa-user-graduate"></i><span>Profile</span></a>
+      <a href="settings.html" class="nav-link"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+    </nav>
+    <div style="margin-top: auto;">
+      <a href="#" onclick="handleLogout()" class="nav-link" style="color: var(--accent-red);"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="face-verification-container">
+      <div class="scanner-header">
+        <h1>BIOMETRIC FACE SCAN</h1>
+        <p style="color: var(--text-secondary);">Secure identity verification using neural face matching.</p>
+      </div>
+  
+      <div class="scan-viewfinder" id="scanner-container">
+        <video id="camera-preview" autoplay playsinline muted></video>
+        
+        <!-- Premium Overlays -->
+        <div class="overlay-grid"></div>
+        <div class="scan-corners"><span></span></div>
+        <div class="cyber-scanner-line"></div>
+        <div class="pulse-ring"></div>
+        
+        <div style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 15px; font-size: 10px; font-weight: 800; color: var(--accent-cyan); letter-spacing: 1px; backdrop-filter: blur(5px); border: 1px solid rgba(0,255,204,0.3);">
+          <i class="fa-solid fa-circle fa-fade" style="color: var(--accent-red); margin-right: 5px; font-size: 8px;"></i> LIVE SENSOR ACTIVE
+        </div>
+      </div>
+  
+      <div style="text-align: center; margin-top: 20px;">
+        <div class="status-badge" id="scan-status-badge">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span id="scan-status">READY FOR SCAN</span>
+        </div>
+        
+        <div style="width: 100%; max-width: 400px; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; margin: 30px auto; overflow: hidden;">
+          <div id="scan-progress" style="width: 0%; height: 100%; background: var(--accent-cyan); box-shadow: 0 0 15px var(--accent-cyan); transition: width 0.1s linear;"></div>
+        </div>
+  
+        <button id="scan-btn" onclick="startScan()" class="glass-card" style="background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); color: #000; border: none; font-weight: 900; padding: 18px 45px; border-radius: 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 15px; box-shadow: 0 10px 25px rgba(0,255,204,0.3); transition: all 0.3s;">
+          <i class="fa-solid fa-face-viewfinder"></i>
+          AUTHENTICATE IDENTITY
+        </button>
+      </div>
+
+      <div style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+        <div class="glass-card" style="padding: 15px; background: rgba(0,0,0,0.2);">
+          <div style="font-size: 10px; color: var(--text-muted);">LIVENESS</div>
+          <div style="font-size: 14px; font-weight: 700; color: var(--accent-green);">DETECTED</div>
+        </div>
+        <div class="glass-card" style="padding: 15px; background: rgba(0,0,0,0.2);">
+          <div style="font-size: 10px; color: var(--text-muted);">CONFIDENCE</div>
+          <div style="font-size: 14px; font-weight: 700;">99.8%</div>
+        </div>
+        <div class="glass-card" style="padding: 15px; background: rgba(0,0,0,0.2);">
+          <div style="font-size: 10px; color: var(--text-muted);">Biometric ID</div>
+          <div style="font-size: 14px; font-weight: 700;">#{user_id}</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/auto_verification.js"></script>
+  <script src="../js/face_verification.js"></script>
+</body>
+</html>

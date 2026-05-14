@@ -7,275 +7,310 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="../css/style.css" />
   <style>
+    :root {
+      --bg-dark: #0a0f1e;
+      --bg-sidebar: #0d1117;
+      --accent-cyan: #00ffcc;
+    }
     body {
       margin: 0;
       padding: 0;
-      display: flex;
       min-height: 100vh;
-      background: var(--bg-primary);
+      background: var(--bg-dark);
       font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
     }
-    .register-container {
+    .split-layout {
       display: flex;
-      width: 100%;
-      min-height: 100vh;
-    }
-    .left-panel {
-      flex: 1;
-      background: linear-gradient(135deg, #0a0f1e, #1a1f35);
-      border-right: 1px solid rgba(0, 255, 204, 0.1);
-      display: flex;
-      flex-direction: column;
       justify-content: center;
-      padding: 60px;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0a0f1e, #161e38);
+      padding: 40px 20px;
     }
     .right-panel {
-      flex: 1.2;
-      background: #0d1117;
+      width: 100%;
+      max-width: 680px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 40px;
-      overflow-y: auto;
     }
     .branding-box {
-      max-width: 480px;
+      max-width: 520px;
       margin: 0 auto;
     }
-    .branding-logo {
-      font-family: 'Outfit', sans-serif;
-      font-size: 36px;
-      font-weight: 900;
-      color: #ffffff;
-      margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-      gap: 15px;
+    .app-logo {
+      font-size: 48px;
+      color: var(--accent-cyan);
+      margin-bottom: 20px;
     }
-    .branding-tagline {
+    .app-title {
+      font-size: 38px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 10px;
+      line-height: 1.2;
+    }
+    .app-subtitle {
       font-size: 18px;
       color: var(--accent-cyan);
-      margin-bottom: 40px;
+      margin-bottom: 50px;
       font-weight: 600;
     }
-    .feature-list {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 60px;
     }
-    .feature-item {
+    .feature-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+    }
+    .feature-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      background: rgba(0, 255, 204, 0.1);
       display: flex;
       align-items: center;
-      gap: 15px;
-      font-size: 15px;
-      color: rgba(255, 255, 255, 0.7);
-    }
-    .feature-item i {
+      justify-content: center;
+      font-size: 24px;
       color: var(--accent-cyan);
-      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .feature-text h4 {
+      margin: 0 0 5px 0;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .feature-text p {
+      margin: 0;
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .version-text {
+      position: absolute;
+      bottom: 40px;
+      left: 60px;
+      color: rgba(255,255,255,0.3);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1px;
     }
     .form-card {
       width: 100%;
-      max-width: 520px;
-      padding: 40px;
-      border-radius: 20px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: var(--shadow-card);
+      max-width: 680px;
+      background: rgba(255, 255, 255, 0.02);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 24px;
+      padding: 50px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     }
-    .form-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: 28px;
+    .welcome-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .welcome-title {
+      font-size: 32px;
       font-weight: 800;
-      color: #ffffff;
+      color: #fff;
       margin-bottom: 8px;
     }
-    .form-subtitle {
-      font-size: 14px;
-      color: var(--text-secondary);
-      margin-bottom: 30px;
+    .welcome-subtitle {
+      font-size: 16px;
+      color: rgba(255,255,255,0.6);
     }
-    
-    /* Progress bar styling */
-    .progress-bar-container {
+    .step-indicator {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30px;
-      position: relative;
+      margin-bottom: 40px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 20px;
     }
-    .progress-bar-line {
-      position: absolute;
-      top: 15px;
-      left: 10%;
-      right: 10%;
-      height: 2px;
-      background: rgba(255, 255, 255, 0.1);
-      z-index: 1;
-    }
-    .progress-step {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      z-index: 2;
+    .step {
+      text-align: center;
       flex: 1;
-    }
-    .step-dot {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: rgba(15, 25, 45, 0.9);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 800;
-      color: rgba(255, 255, 255, 0.4);
-    }
-    .progress-step.active .step-dot {
-      border-color: var(--accent-cyan);
-      color: var(--accent-cyan);
-      box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
-    }
-    .step-label {
-      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      font-size: 13px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: rgba(255, 255, 255, 0.4);
+      letter-spacing: 1px;
     }
-    .progress-step.active .step-label {
-      color: #ffffff;
+    .step span {
+      display: block;
+      color: #fff;
+      margin-top: 5px;
     }
-
-    /* Section divider styling */
+    .step.active {
+      color: var(--accent-cyan);
+    }
+    .step.active span {
+      text-shadow: 0 0 10px rgba(0,255,204,0.3);
+    }
     .form-section-label {
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 800;
       text-transform: uppercase;
       color: var(--accent-cyan);
       letter-spacing: 1.5px;
-      border-bottom: 1px solid rgba(0, 255, 204, 0.15);
-      padding-bottom: 8px;
-      margin-top: 25px;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
+      margin-top: 30px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
-
-    .form-control-container {
-      position: relative;
-      margin-bottom: 16px;
+    .form-section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(0,255,204,0.2);
     }
-    .form-control-container i {
-      position: absolute;
-      left: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: rgba(255, 255, 255, 0.3);
-      font-size: 14px;
-    }
-    .form-control-with-icon {
-      width: 100%;
-      height: 48px;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: white;
-      padding: 0 16px 0 45px;
-      font-size: 14px;
-      outline: none;
-      box-sizing: border-box;
-      transition: all 0.3s ease;
-    }
-    .form-control-with-icon:focus {
-      border-color: var(--accent-cyan);
-      box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.1);
+    .form-section-label:first-child {
+      margin-top: 0;
     }
     .form-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 20px;
+    }
+    .form-control-container {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .form-control-container i {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 18px;
+      z-index: 2;
+    }
+    .form-control-with-icon {
+      width: 100%;
+      height: 52px;
+      background: rgba(0, 0, 0, 0.2) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      border-radius: 12px !important;
+      color: #ffffff !important;
+      padding: 0 20px 0 50px !important;
+      font-size: 16px;
+      outline: none !important;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+      font-family: 'Inter', sans-serif;
+    }
+    .form-control-with-icon:focus {
+      border-color: var(--accent-cyan) !important;
+      box-shadow: 0 0 0 4px rgba(0, 255, 204, 0.1) !important;
+    }
+    select.form-control-with-icon {
+      appearance: none;
+      -webkit-appearance: none;
+      padding-right: 40px !important;
+    }
+    .select-arrow {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(255,255,255,0.4);
+      pointer-events: none;
     }
     .btn-submit {
-      height: 48px;
-      width: 100%;
-      background: var(--gradient-cyan);
-      border: none;
-      border-radius: 10px;
-      color: #0a0f1e;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      letter-spacing: 0.5px;
-      transition: all 0.2s ease;
+      background: linear-gradient(135deg, var(--accent-cyan), #00b4aa) !important;
+      color: #0a0f1e !important;
+      font-family: 'Inter', sans-serif;
+      font-weight: 800 !important;
+      font-size: 16px !important;
+      height: 52px !important;
+      width: 100% !important;
+      border-radius: 12px !important;
+      border: none !important;
+      cursor: pointer !important;
+      margin-top: 20px;
+      transition: all 0.3s ease;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
-      margin-top: 20px;
+      box-shadow: 0 10px 20px rgba(0, 255, 204, 0.2) !important;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
     .btn-submit:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
+      transform: translateY(-2px);
+      box-shadow: 0 15px 25px rgba(0, 255, 204, 0.3) !important;
     }
-    @media (max-width: 900px) {
-      .left-panel {
-        display: none;
-      }
-      .right-panel {
-        padding: 20px;
-      }
+    .bottom-link {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
     }
+    .bottom-link a {
+      color: var(--accent-cyan);
+      font-weight: 700;
+      text-decoration: none;
+      margin-left: 5px;
+      transition: all 0.2s ease;
+    }
+    .bottom-link a:hover {
+      text-shadow: 0 0 10px rgba(0,255,204,0.4);
+    }
+    .alert-error {
+      background: rgba(220, 53, 69, 0.1) !important;
+      border: 1px solid rgba(220, 53, 69, 0.2) !important;
+      border-left: 4px solid #dc3545 !important;
+      color: #ff6b6b !important;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .alert-success {
+      background: rgba(0, 255, 204, 0.1) !important;
+      border: 1px solid rgba(0, 255, 204, 0.2) !important;
+      border-left: 4px solid var(--accent-cyan) !important;
+      color: var(--accent-cyan) !important;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(10, 15, 30, 0.2);
+      border-top-color: #0a0f1e;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
 <div id="toast-container"></div>
 
-<div class="register-container">
-  <!-- Left Panel -->
-  <div class="left-panel">
-    <div class="branding-box">
-      <div class="branding-logo">
-        <i class="fa-solid fa-graduation-cap" style="color: var(--accent-cyan);"></i> SmartAttendance
-      </div>
-      <div class="branding-tagline">Smart Attendance System</div>
-      <div class="feature-list">
-        <div class="feature-item">
-          <i class="fa-solid fa-circle-check"></i> GPS-based location verification
-        </div>
-        <div class="feature-item">
-          <i class="fa-solid fa-circle-check"></i> AI face recognition attendance
-        </div>
-        <div class="feature-item">
-          <i class="fa-solid fa-circle-check"></i> Real-time boundary monitoring
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Right Panel -->
+<div class="split-layout">
+  <!-- Main Panel: Registration Form -->
   <div class="right-panel">
     <div class="form-card">
-      <div class="form-title">Create Account</div>
-      <div class="form-subtitle">Join Smart Attendance System</div>
+      <div class="welcome-header">
+        <div class="welcome-title">CREATE ACCOUNT</div>
+        <div class="welcome-subtitle">Join the Smart Attendance System</div>
+      </div>
 
-      <!-- Progress Bar (Visual Only) -->
-      <div class="progress-bar-container">
-        <div class="progress-bar-line"></div>
-        <div class="progress-step active">
-          <div class="step-dot">1</div>
-          <div class="step-label">Personal</div>
-        </div>
-        <div class="progress-step active">
-          <div class="step-dot">2</div>
-          <div class="step-label">Academic</div>
-        </div>
-        <div class="progress-step active">
-          <div class="step-dot">3</div>
-          <div class="step-label">Security</div>
-        </div>
+      <div class="step-indicator">
+        <div class="step active">STEP 1<br><span>Personal Info</span></div>
+        <div class="step active">STEP 2<br><span>Academic Info</span></div>
+        <div class="step active">STEP 3<br><span>Security Setup</span></div>
       </div>
 
       <form id="register-form" onsubmit="handleRegister(event)">
@@ -283,90 +318,93 @@
         <div class="form-section-label">Personal Information</div>
         <div class="form-row">
           <div class="form-control-container">
-            <i class="fa-solid fa-id-card"></i>
-            <input type="text" id="reg-student-id" class="form-control-with-icon" placeholder="CS2024001" required />
+            <i class="fa-solid fa-user"></i>
+            <input type="text" id="reg-name" class="form-control-with-icon" placeholder="Full Name" required />
           </div>
           <div class="form-control-container">
-            <i class="fa-solid fa-user"></i>
-            <input type="text" id="reg-name" class="form-control-with-icon" placeholder="Full name" required />
+            <i class="fa-solid fa-id-card"></i>
+            <input type="text" id="reg-student-id" class="form-control-with-icon" placeholder="Student ID" required />
           </div>
         </div>
         
         <div class="form-row">
           <div class="form-control-container">
             <i class="fa-solid fa-envelope"></i>
-            <input type="email" id="reg-email" class="form-control-with-icon" placeholder="your@email.com" required />
+            <input type="email" id="reg-email" class="form-control-with-icon" placeholder="Email Address" required />
           </div>
           <div class="form-control-container">
             <i class="fa-solid fa-phone"></i>
-            <input type="tel" id="reg-phone" class="form-control-with-icon" placeholder="+91 XXXXXXXXXX" />
+            <input type="tel" id="reg-phone" class="form-control-with-icon" placeholder="Phone Number" />
           </div>
         </div>
 
         <!-- Section: Academic Info -->
         <div class="form-section-label">Academic Information</div>
-        <div class="form-control-container">
-          <i class="fa-solid fa-building" style="z-index: 10;"></i>
-          <select id="reg-dept" class="form-control-with-icon" required style="appearance: none;">
-            <option value="">Select Department...</option>
-            <option value="Computer Science">Computer Science</option>
-            <option value="AI&amp;DS">AI&amp;DS</option>
-            <option value="IT">IT</option>
-            <option value="ECE">ECE</option>
-            <option value="Information Technology">Information Technology</option>
-            <option value="Electronics">Electronics</option>
-            <option value="Mechanical Engineering">Mechanical Engineering</option>
-            <option value="Civil Engineering">Civil Engineering</option>
-          </select>
-        </div>
-
         <div class="form-row">
           <div class="form-control-container">
-            <i class="fa-solid fa-graduation-cap" style="z-index: 10;"></i>
-            <select id="reg-year" class="form-control-with-icon" required style="appearance: none;">
-              <option value="">Select Year...</option>
+            <i class="fa-solid fa-building"></i>
+            <select id="reg-dept" class="form-control-with-icon" required>
+              <option value="">Select Department</option>
+              <option value="AI&DS">AI&DS</option>
+              <option value="CSE">CSE</option>
+              <option value="ECE">ECE</option>
+              <option value="EEE">EEE</option>
+              <option value="MECH">MECH</option>
+              <option value="CIVIL">CIVIL</option>
+              <option value="IT">IT</option>
+              <option value="MBA">MBA</option>
+              <option value="MCA">MCA</option>
+            </select>
+            <i class="fa-solid fa-chevron-down select-arrow"></i>
+          </div>
+          <div class="form-control-container">
+            <i class="fa-solid fa-graduation-cap"></i>
+            <select id="reg-year" class="form-control-with-icon" required>
+              <option value="">Select Year/Class</option>
               <option value="I Year">I Year</option>
               <option value="II Year">II Year</option>
               <option value="III Year">III Year</option>
               <option value="IV Year">IV Year</option>
             </select>
+            <i class="fa-solid fa-chevron-down select-arrow"></i>
           </div>
-          <div class="form-control-container">
-            <i class="fa-solid fa-users" style="z-index: 10;"></i>
-            <select id="reg-class-section" class="form-control-with-icon" style="appearance: none;">
-              <option value="">No Section</option>
-              <option value="Section A">Section A</option>
-              <option value="Section B">Section B</option>
-              <option value="Section C">Section C</option>
-            </select>
-          </div>
+        </div>
+        
+        <div class="form-control-container" style="width: 50%; padding-right: 10px;">
+          <i class="fa-solid fa-users"></i>
+          <select id="reg-class-section" class="form-control-with-icon">
+            <option value="">Select Section</option>
+            <option value="Section A">Section A</option>
+            <option value="Section B">Section B</option>
+            <option value="Section C">Section C</option>
+          </select>
+          <i class="fa-solid fa-chevron-down select-arrow"></i>
         </div>
 
         <!-- Section: Security -->
-        <div class="form-section-label">Security</div>
+        <div class="form-section-label">Security Setup</div>
         <div class="form-row">
           <div class="form-control-container">
             <i class="fa-solid fa-lock"></i>
-            <input type="password" id="reg-password" class="form-control-with-icon" placeholder="Min 8 chars" required minlength="8" />
+            <input type="password" id="reg-password" class="form-control-with-icon" placeholder="Password (Min 8 chars)" required minlength="8" />
           </div>
           <div class="form-control-container">
             <i class="fa-solid fa-lock"></i>
-            <input type="password" id="reg-confirm" class="form-control-with-icon" placeholder="Confirm" required />
+            <input type="password" id="reg-confirm" class="form-control-with-icon" placeholder="Confirm Password" required />
           </div>
         </div>
 
-        <div id="reg-error" class="alert alert-error" style="display:none; margin-bottom: 16px;"></div>
+        <div id="reg-error" class="alert alert-error" style="display:none;"></div>
 
         <button type="submit" class="btn-submit" id="reg-btn">
-          <span id="reg-btn-text">Create Account</span>
+          <span id="reg-btn-text">CREATE ACCOUNT</span>
           <span id="reg-spinner" class="spinner" style="display:none"></span>
         </button>
       </form>
       
-      <p style="text-align:center; margin-top:25px; font-size:14px; color:var(--text-secondary)">
-        Already have an account?
-        <a href="login.html" style="color: var(--accent-cyan); font-weight: 700; text-decoration: none;">Sign In</a>
-      </p>
+      <div class="bottom-link">
+        Already have an account? <a href="/">LOGIN</a>
+      </div>
     </div>
   </div>
 </div>

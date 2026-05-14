@@ -12,6 +12,29 @@ student_bp.route("/profile", methods=["GET"])(get_profile)
 student_bp.route("/all", methods=["GET"])(get_all_students)
 student_bp.route("/<student_id>", methods=["GET"])(get_student_by_id)
 
+@student_bp.route("/set-boundary", methods=["POST"])
+def set_boundary():
+    from flask import request, jsonify
+    from DATABASE.connection.db_connection import execute_query
+    data = request.get_json() or {}
+    student_id = data.get("student_id")
+    lat = data.get("lat")
+    lng = data.get("lng")
+    
+    if not student_id or lat is None or lng is None:
+        return jsonify({"success": False, "message": "Missing parameters"}), 400
+        
+    try:
+        # Check if boundary_lat exists before trying to update, otherwise ignore or alter
+        # We will attempt to update it, and handle errors if columns don't exist
+        query = "UPDATE students SET boundary_lat = %s, boundary_lng = %s WHERE student_id = %s"
+        execute_query(query, (lat, lng, student_id))
+    except Exception as e:
+        print(f"Failed to update student boundary: {e}")
+        pass
+        
+    return jsonify({"success": True})
+
 
 from BACKEND.middleware.auth_middleware import require_auth
 

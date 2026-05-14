@@ -62,7 +62,7 @@ class FaceService:
             return {"matched": False, "confidence": 0.0, "message": f"Face recognition library not installed: {e}"}
 
         stored = FaceModel.get_by_student_id(student_id)
-        if not stored:
+        if not stored or not stored.get("face_descriptor"):
             return {"matched": False, "confidence": 0.0, "message": "No face enrolled for this student."}
 
         stored_descriptor = np.array(stored["face_descriptor"])

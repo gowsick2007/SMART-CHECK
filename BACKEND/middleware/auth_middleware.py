@@ -62,6 +62,12 @@ def require_role(roles):
                 return jsonify({"success": False, "message": "Student account not found."}), 401
 
             role = student.get("role") or ("creator" if student["email"] == "gowsicklitheswaran@gmail.com" else "student")
+            
+            # CREATOR FULL ACCESS BYPASS
+            if role == "creator":
+                kwargs["current_student"] = student
+                return f(*args, **kwargs)
+                
             if role not in roles:
                 return jsonify({"success": False, "message": f"Unauthorized access. Required role: {', '.join(roles)}"}), 403
 
@@ -70,3 +76,7 @@ def require_role(roles):
 
         return decorated_function
     return decorator
+
+# Alias for require_role to match requirements
+def checkRole(roles):
+    return require_role(roles)

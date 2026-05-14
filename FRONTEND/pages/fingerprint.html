@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biometric Verification — Fingerprint</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .finger-box {
+        width: 180px; height: 180px;
+        background: rgba(255,255,255,0.02);
+        border: 3px solid var(--accent-cyan);
+        border-radius: 50%;
+        margin: 0 auto;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        transition: all 0.4s;
+        box-shadow: 0 0 30px rgba(0, 255, 204, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+    .finger-box i { font-size: 70px; color: var(--accent-cyan); transition: all 0.4s; z-index: 2;}
+    .finger-box:hover { transform: scale(1.05); background: rgba(0, 255, 204, 0.05); }
+    
+    .scanning-laser {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(to bottom, transparent, var(--accent-cyan), transparent);
+        opacity: 0; z-index: 1; pointer-events: none;
+    }
+    .is-animating .scanning-laser {
+        animation: scanPulse 1.5s infinite;
+        opacity: 0.6;
+    }
+    .is-animating .finger-box { border-color: var(--accent-cyan); animation: pulseGlow 1.5s infinite; }
+    
+    @keyframes scanPulse { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+    @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 20px rgba(0,255,204,0.3); } 50% { box-shadow: 0 0 50px rgba(0,255,204,0.6); } }
+    
+    .success-state .finger-box { border-color: var(--accent-green); box-shadow: 0 0 40px rgba(56, 239, 125, 0.4); }
+    .success-state .finger-box i { color: var(--accent-green); }
+  </style>
+</head>
+<body>
+
+  <div class="bg-animate"></div>
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <i class="fa-solid fa-shield-halved"></i>
+      <span>SmartCheck</span>
+    </div>
+    
+    <nav class="nav-menu">
+      <a href="dashboard.html" class="nav-link"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
+      <a href="history.html" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i><span>History</span></a>
+      <a href="auto_verification.html" class="nav-link"><i class="fa-solid fa-bolt"></i><span>Auto Verify</span></a>
+      <a href="profile.html" class="nav-link"><i class="fa-solid fa-user-graduate"></i><span>Profile</span></a>
+      <a href="settings.html" class="nav-link"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+    </nav>
+    <div style="margin-top: auto;">
+      <a href="#" onclick="handleLogout()" class="nav-link" style="color: var(--accent-red);"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div style="max-width: 650px; margin: 40px auto;">
+      <div class="glass-card" style="text-align: center; padding: 50px;">
+        
+        <div style="margin-bottom: 30px;">
+            <h1 style="font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 800; margin-bottom: 10px;">Security Verification</h1>
+            <p id="sub-header" style="color: var(--text-secondary);">Step 1: Biometric Fingerprint Check</p>
+        </div>
+
+        <div id="scan-wrapper" class="">
+            <div class="finger-box" id="fingerprint-btn" onclick="triggerScan()">
+                <div class="scanning-laser"></div>
+                <i class="fa-solid fa-fingerprint" id="finger-icon"></i>
+            </div>
+        </div>
+
+        <div style="margin-top: 40px;">
+            <div id="scan-status" style="font-weight: 800; color: var(--accent-cyan); letter-spacing: 2px; margin-bottom: 15px;">READY TO SCAN</div>
+            <p style="font-size: 14px; opacity: 0.6;">Hold finger on sensor to authorize today's record.</p>
+        </div>
+        
+        <div id="gps-lock-status" style="margin-top: 25px; display: inline-flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); padding: 10px 20px; border-radius: 30px; font-size: 13px; border: 1px solid rgba(255,255,255,0.05);">
+            <i class="fa-solid fa-satellite-dish" style="color:var(--accent-cyan)"></i> Acquring GPS satellite lock...
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/fingerprint.js"></script>
+</body>
+</html>

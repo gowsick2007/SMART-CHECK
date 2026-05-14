@@ -38,7 +38,67 @@ def get_history(current_student=None):
     """GET /api/attendance/history?limit=30"""
     limit = int(request.args.get("limit", 30))
     records = AttendanceService.get_history(current_student["student_id"], limit=limit)
-    return jsonify({"success": True, "records": records, "count": len(records)}), 200
+    
+    from DATABASE.connection.db_connection import execute_query
+    fallback_row = execute_query("SELECT name FROM students WHERE role = 'creator' LIMIT 1", fetch="one")
+    fallback_admin_name = fallback_row["name"] if fallback_row else "System Admin"
+    
+    from BACKEND.services.geofence_service import calculate_distance
+    from DATABASE.connection.db_connection import execute_query
+    res_loc = execute_query("SELECT latitude, longitude FROM boundary_locations ORDER BY updated_time DESC LIMIT 1", fetch="one")
+    if res_loc:
+        COLLEGE_LAT = float(res_loc["latitude"])
+        COLLEGE_LNG = float(res_loc["longitude"])
+    else:
+        try:
+            from CONFIG.college_location_config import COLLEGE_LAT, COLLEGE_LNG
+        except ImportError:
+            COLLEGE_LAT, COLLEGE_LNG = 0.0, 0.0
+
+    formatted_records = []
+    for rec in records:
+        lat = float(rec.get("latitude")) if rec.get("latitude") else None
+        lon = float(rec.get("longitude")) if rec.get("longitude") else None
+        
+        distance = None
+        if lat is not None and lon is not None:
+            distance = round(calculate_distance(lat, lon, COLLEGE_LAT, COLLEGE_LNG), 1)
+        
+        role = rec.get("recorded_by_role", "system")
+        is_inside = bool(rec.get("location_valid"))
+        boundary_str = "inside" if is_inside else "outside"
+        
+        if role != 'system':
+            admin_name = rec.get("marked_by_name")
+            if not admin_name or str(admin_name).strip().lower() in ["admin", ""]:
+                admin_name = fallback_admin_name
+            display_type = f"Set by Admin ({admin_name})"
+            source_type = "manual"
+            clean_distance = "Attendance manually updated"
+            face_display = "not_attempted" # Frontend renders this as "—"
+        else:
+            display_type = "Auto Verified"
+            source_type = "auto"
+            dist_str = f"{distance}m" if distance is not None else "—"
+            clean_distance = f"{dist_str} {boundary_str}"
+            face_display = rec.get("face_match_status", "not_attempted")
+
+        formatted_records.append({
+            "date": str(rec.get("date")) if rec.get("date") else "",
+            "time": str(rec.get("time")) if rec.get("time") else "",
+            "type": display_type,
+            "source": source_type,
+            "boundary": boundary_str,
+            "distance": clean_distance,
+            "status": (rec.get("status") or "absent").lower(),
+            "recorded_by_role": role,
+            "location_valid": is_inside,
+            "face_match_status": face_display,
+            "remarks": clean_distance,
+            "marked_by_name": admin_name if role != 'system' else None
+        })
+
+    return jsonify({"success": True, "records": formatted_records, "count": len(formatted_records)}), 200
 
 
 @require_auth

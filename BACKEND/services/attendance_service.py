@@ -79,10 +79,10 @@ class AttendanceService:
             }
 
         # Both checks passed — determine status
-        attendance_status = get_attendance_status(now)
+        attendance_status = "present"
 
         record_id = AttendanceModel.create(
-            student_id=student_id, date=today, time=now, status=attendance_status,
+            student_id=student_id, date=today, time=now, status="present",
             latitude=latitude, longitude=longitude, location_valid=True,
             face_match_status="success", face_confidence=face_confidence,
             remarks=f"Distance: {geo_result['distance_m']}m from campus center"

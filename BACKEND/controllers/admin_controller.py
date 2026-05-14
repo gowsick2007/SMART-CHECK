@@ -1,12 +1,19 @@
-from flask import request, jsonify
-from functools import wraps
-from DATABASE.connection.db_connection import execute_query
-from UTILS.time_utils import get_current_date
+# ============================================================
+# admin_controller.py — Administrator Actions
+# ============================================================
 
-ADMIN_TOKEN = "admin-secret-token-12345"
+from flask import request, jsonify
+from DATABASE.connection.db_connection import execute_query, execute_insert
+from datetime import datetime
+import functools
+
+ADMIN_TOKEN = "smart-attendance-admin-2026"
+
+def get_current_date():
+    return datetime.now().date()
 
 def require_admin(f):
-    @wraps(f)
+    @functools.wraps(f)
     def decorated_function(*args, **kwargs):
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
@@ -30,19 +37,30 @@ def require_admin(f):
     return decorated_function
 
 def admin_login():
-    """POST /api/admin/login"""
+    """POST /api/admin/login — ONLY ADMIN"""
+    from BACKEND.services.auth_service import AuthService
     data = request.get_json()
-    username = data.get("username")
-    password = data.get("password")
     
-    if username == "admin" and password == "admin123":
-        return jsonify({"success": True, "token": ADMIN_TOKEN}), 200
+    identifier = data.get("username") or data.get("identifier") or data.get("email", "")
+    password = data.get("password", "")
     
-    return jsonify({"success": False, "message": "Invalid credentials"}), 401
+    if not identifier or not password:
+        return jsonify({"success": False, "message": "Identifier and password required"}), 400
+
+    ip = request.remote_addr
+    ua = request.headers.get("User-Agent", "")
+    
+    # Use strict role enforcement
+    result = AuthService.login(identifier, password, ip=ip, user_agent=ua, required_role='admin')
+    
+    if not result.get("success"):
+        return jsonify(result), 401
+        
+    return jsonify(result), 200
 
 @require_admin
 def get_all_students():
-    """GET /api/admin/all-students"""
+    """GET /api/admin/all-students-old"""
     dept = request.args.get("department")
     cls = request.args.get("class")
     
@@ -63,7 +81,6 @@ def get_all_students():
 def get_boundary_status():
     """GET /api/admin/boundary-status"""
     today = get_current_date()
-    # Get latest auto_verify_log for each student today
     query = """
         SELECT DISTINCT ON (student_id) 
             student_id, gps_status, face_status, final_status, check_time, latitude, longitude
@@ -73,7 +90,6 @@ def get_boundary_status():
     """
     latest_logs = execute_query(query, (today,), fetch="all")
     
-    # Format datetime objects to string
     if latest_logs:
         for rec in latest_logs:
             if 'check_time' in rec and rec['check_time']:
@@ -86,11 +102,9 @@ def get_today_summary():
     """GET /api/admin/today-summary"""
     today = get_current_date()
     
-    # Total students count
     total_res = execute_query("SELECT COUNT(*) as count FROM students", fetch="one")
     total_students = total_res["count"] if total_res else 0
     
-    # Today's present count (based on attendance table or auto_verify_log, we use attendance table for consistency)
     present_query = """
         SELECT COUNT(DISTINCT student_id) as present_count 
         FROM attendance 
@@ -105,12 +119,88 @@ def get_today_summary():
         "present_count": present_count
     }), 200
 
+# --- New Monitoring Functions ---
+
+@require_admin
+def get_student_monitoring():
+    """GET /api/admin/monitoring"""
+    query = """
+        SELECT 
+            s.student_id, s.name, s.department, s.year, s.class_name,
+            v.gps_status, v.latitude, v.longitude, v.distance_meters, v.check_time
+        FROM students s
+        LEFT JOIN (
+            SELECT DISTINCT ON (student_id) student_id, gps_status, latitude, longitude, distance_meters, check_time
+            FROM auto_verify_log
+            ORDER BY student_id, check_time DESC
+        ) v ON s.student_id = v.student_id
+        WHERE s.is_active = 1 AND s.role = 'student'
+        ORDER BY s.name ASC
+    """
+    students = execute_query(query, fetch="all")
+    if students:
+        for s in students:
+            if s.get('check_time'):
+                s['check_time'] = s['check_time'].isoformat()
+    return jsonify({"success": True, "students": students})
+
+@require_admin
+def mark_attendance():
+    """POST /api/admin/verify-attendance"""
+    data = request.get_json()
+    student_id = data.get("student_id")
+    status = (data.get("status") or "present").lower()
+    if status not in ["present", "absent"]:
+        status = "present"
+    print(f"Saving attendance: {student_id}, {status}")    
+    if not student_id:
+        return jsonify({"success": False, "message": "Student ID required"}), 400
+        
+    now = datetime.now()
+    
+    # Enforce dynamic identification of administrator committing current mark
+    current_admin_name = "Admin"
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            tkn = auth_header.split(" ", 1)[1].strip()
+            from BACKEND.models.session_model import SessionModel
+            from BACKEND.models.student_model import StudentModel
+            sess = SessionModel.get_session(tkn)
+            if sess:
+                stu = StudentModel.find_by_student_id(sess.get("student_id"))
+                if stu and stu.get("name"):
+                    current_admin_name = stu["name"]
+        except Exception: pass
+
+    query = """
+        INSERT INTO attendance 
+            (student_id, date, time, status, recorded_by_role, remarks, marked_by_name)
+        VALUES 
+            (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (student_id, date) DO UPDATE SET
+            status = EXCLUDED.status,
+            remarks = 'Attendance manually updated',
+            marked_by_name = EXCLUDED.marked_by_name,
+            recorded_by_role = EXCLUDED.recorded_by_role
+        RETURNING id
+    """
+    execute_insert(query, (
+        student_id, 
+        now.date(), 
+        now.strftime("%H:%M:%S"), 
+        status, 
+        "admin", 
+        "Attendance manually updated",
+        current_admin_name
+    ))
+    
+    return jsonify({"success": True, "message": f"Attendance marked as {status}"})
+
+# --- Compatibility Functions ---
 
 def get_boundary_status_check(student_id):
     from BACKEND.models.student_model import StudentModel
-    from BACKEND.services.geofence_service import calculate_distance
-    from CONFIG.college_location_config import COLLEGE_LAT, COLLEGE_LNG, RADIUS
-    from DATABASE.connection.db_connection import execute_query
     
     student = StudentModel.find_by_student_id(student_id)
     if not student:
@@ -151,10 +241,8 @@ def get_boundary_status_check(student_id):
         "longitude": lng
     }
 
-
 def get_all_students_list():
     from BACKEND.models.student_model import StudentModel
-    from DATABASE.connection.db_connection import execute_query
     
     students = StudentModel.get_all()
     logs = execute_query("""
@@ -181,4 +269,3 @@ def get_all_students_list():
             "last_check": check_time.strftime("%Y-%m-%d %H:%M:%S") if check_time else "—"
         })
     return {"success": True, "students": res}
-

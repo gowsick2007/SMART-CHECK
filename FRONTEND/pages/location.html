@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Attendance — Location Setup</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    body {
+      background-color: #0a0f1e;
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    
+    .setup-container {
+      width: 100%;
+      max-width: 900px;
+      padding: 20px;
+      z-index: 10;
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .title-section {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .title-section h1 {
+      font-size: 2.5rem;
+      color: #00ffcc;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+    }
+    
+    .title-section p {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 1.1rem;
+    }
+
+    .btn-action {
+      background: linear-gradient(135deg, #00ffcc 0%, #00b3ff 100%);
+      color: #000;
+      border: none;
+      padding: 16px 32px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: 12px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 20px rgba(0, 255, 204, 0.2);
+      margin-bottom: 15px;
+    }
+
+    .btn-action:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 25px rgba(0, 255, 204, 0.4);
+    }
+
+    .btn-action:disabled {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.3);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: #00ffcc;
+      border: 1px solid #00ffcc;
+      padding: 16px 32px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: 12px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.3s ease;
+    }
+
+    .btn-outline:hover {
+      background: rgba(0, 255, 204, 0.1);
+    }
+
+    #map-wrapper {
+      display: none;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s ease;
+      margin-top: 20px;
+    }
+
+    #map-wrapper.visible {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .map-container {
+      width: 100%;
+      height: 500px;
+      min-height: 500px;
+      border-radius: 18px;
+      overflow: hidden;
+      display: block;
+      position: relative;
+      background: #111827;
+      margin-bottom: 20px;
+      border: 1px solid rgba(0, 255, 204, 0.2);
+    }
+    
+    .search-input {
+      width: 100%;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: white;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #00ffcc;
+    }
+    
+    .flex-row {
+      display: flex;
+      gap: 15px;
+    }
+
+    #success-msg {
+      display: none;
+      background: rgba(0, 255, 204, 0.1);
+      border: 1px solid #00ffcc;
+      color: #00ffcc;
+      padding: 15px;
+      border-radius: 12px;
+      text-align: center;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    
+    #map-error-msg {
+      display: none;
+      background: rgba(255, 50, 50, 0.1);
+      border: 1px solid #ff3333;
+      color: #ff3333;
+      padding: 15px;
+      border-radius: 12px;
+      text-align: center;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    
+    /* Hide duplicate Google Maps error overlay */
+    .gm-err-container { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <div class="setup-container">
+    <div class="glass-card">
+      <div class="title-section">
+        <h1>Boundary Location Setup</h1>
+        <p>Configure your approved campus attendance location before entering dashboard.</p>
+      </div>
+
+      <div id="initial-actions">
+        <button id="enable-location-btn" class="btn-action" onclick="requestLocationPermission()">
+          <i class="fa-solid fa-location-crosshairs"></i> Enable Location Access
+        </button>
+        <button id="open-map-btn" class="btn-outline" onclick="openMap()" disabled>
+          <i class="fa-solid fa-map-location-dot"></i> Choose Boundary Location
+        </button>
+      </div>
+
+      <div id="map-wrapper">
+        <input type="text" id="map-search-input" class="search-input" placeholder="Search institution, address or place..." />
+        <div id="map" class="map-container">
+          <div id="map-loader" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.2rem; color: #00ffcc; z-index: 1;">Loading Map...</div>
+        </div>
+        <div class="flex-row">
+          <button class="btn-outline" onclick="cancelMap()">Cancel</button>
+          <button class="btn-action" id="save-btn" onclick="saveBoundaryLocation()" style="margin-bottom: 0;">
+            <i class="fa-solid fa-check"></i> SAVE BOUNDARY LOCATION
+          </button>
+        </div>
+      </div>
+
+      <div id="success-msg">
+        <i class="fa-solid fa-circle-check"></i> Boundary location configured successfully. Redirecting...
+      </div>
+      
+      <div id="map-error-msg">
+        <i class="fa-solid fa-triangle-exclamation"></i> Google Maps failed to load. Please check your internet connection or API key.
+      </div>
+    </div>
+  </div>
+
+  <!-- JS LOADING ORDER -->
+  <script src="../js/auth.js"></script>
+  <script src="../js/location.js"></script>
+
+  <!-- GOOGLE MAPS SDK -->
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAgYnd-U-LaIcA1tTGmgHrUd7epzLuTeKU&libraries=places&callback=initMap"
+    onerror="alert('Google Maps failed to load'); console.error('Google Maps Load Error');">
+  </script>
+  
+  <script>
+    // ── Guard: redirect if not logged in ─────────────────────────
+    requireAuth();
+
+    function requestLocationPermission() {
+      const btn = document.getElementById('enable-location-btn');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Requesting...';
+      
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            localStorage.setItem('locationPermissionGranted', 'true');
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Location Enabled';
+            btn.style.background = 'rgba(0, 255, 204, 0.1)';
+            btn.style.color = '#00ffcc';
+            btn.style.border = '1px solid #00ffcc';
+            btn.disabled = true;
+            
+            document.getElementById('open-map-btn').disabled = false;
+            document.getElementById('open-map-btn').className = 'btn-action';
+          },
+          (error) => {
+            btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Enable Location Access';
+            alert("Location access denied. Please allow location permissions in your browser.");
+          }
+        );
+      } else {
+        alert("Geolocation is not supported by this browser.");
+      }
+    }
+
+    function openMap() {
+      document.getElementById('initial-actions').style.display = 'none';
+      const mapWrapper = document.getElementById('map-wrapper');
+      mapWrapper.style.display = 'block';
+      setTimeout(() => {
+          mapWrapper.classList.add('visible');
+          if (window.google && window.map) {
+              google.maps.event.trigger(map, 'resize');
+          }
+          document.getElementById('map-loader').style.display = 'none';
+      }, 300);
+    }
+
+    function cancelMap() {
+      document.getElementById('map-wrapper').classList.remove('visible');
+      setTimeout(() => {
+        document.getElementById('map-wrapper').style.display = 'none';
+        document.getElementById('initial-actions').style.display = 'block';
+      }, 500);
+    }
+
+    // Override the success message display after save
+    const originalSave = window.saveBoundaryLocation;
+    window.saveBoundaryLocation = async function() {
+        if (!selectedLat || !selectedLng) {
+            alert("Please select a location on the map");
+            return;
+        }
+        
+        // Call the core logic from location.js
+        const success = await originalSave();
+        // If it was successful (redirect hasn't happened yet), show our UI feedback
+        if (document.getElementById('success-msg')) {
+             document.getElementById('map-wrapper').style.display = 'none';
+             document.getElementById('success-msg').style.display = 'block';
+        }
+    };
+  </script>
+</body>
+</html>
