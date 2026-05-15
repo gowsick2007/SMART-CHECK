@@ -18,7 +18,7 @@ class Config:
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB max upload
 
     # CORS
-    CORS_ORIGINS = ["http://localhost:5500", "http://127.0.0.1:5500"]
+    CORS_ORIGINS = ["*"]
 
     # Session
     SESSION_COOKIE_HTTPONLY = True
