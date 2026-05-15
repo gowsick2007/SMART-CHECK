@@ -1,152 +1,35 @@
-# ============================================================
-# db_connection.py — PostgreSQL Connection (psycopg2)
-# ============================================================
-
 import sys
 import os
 import psycopg2
 import psycopg2.extras
 
-# Ensure project root is in path for imports
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(_HERE))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from BACKEND.config.db_config import DB_CONFIG
+from BACKEND.config.db_config import DATABASE_URL
 
 
 def get_connection():
-    """
-    Returns a new psycopg2 connection using the configured DB settings.
-    Automatically creates the database and required tables if they do not exist.
-    """
     _ensure_database_and_tables()
-    try:
-        # First attempt to connect to the target database directly
-        conn = psycopg2.connect(
-            host=DB_CONFIG["host"],
-            port=DB_CONFIG["port"],
-            user=DB_CONFIG["user"],
-            password=DB_CONFIG["password"],
-            dbname=DB_CONFIG["database"],
-            cursor_factory=psycopg2.extras.RealDictCursor,
-        )
-        conn.autocommit = True
-        return conn
-
-    except psycopg2.OperationalError as e:
-        err_msg = str(e).lower()
-
-        # If database does not exist → create it then reconnect
-        if "does not exist" in err_msg or "invalid catalog" in err_msg:
-            try:
-                admin_conn = psycopg2.connect(
-                    host=DB_CONFIG["host"],
-                    port=DB_CONFIG["port"],
-                    user=DB_CONFIG["user"],
-                    password=DB_CONFIG["password"],
-                    dbname="postgres",  # connect to default admin DB
-                )
-                admin_conn.autocommit = True
-                with admin_conn.cursor() as cur:
-                    db_name = DB_CONFIG["database"]
-                    cur.execute(
-                        f"SELECT 1 FROM pg_database WHERE datname = %s", (db_name,)
-                    )
-                    if not cur.fetchone():
-                        cur.execute(f'CREATE DATABASE "{db_name}"')
-                admin_conn.close()
-
-                # Reconnect to the newly created database
-                conn = psycopg2.connect(
-                    host=DB_CONFIG["host"],
-                    port=DB_CONFIG["port"],
-                    user=DB_CONFIG["user"],
-                    password=DB_CONFIG["password"],
-                    dbname=DB_CONFIG["database"],
-                    cursor_factory=psycopg2.extras.RealDictCursor,
-                )
-                conn.autocommit = True
-                return conn
-
-            except Exception as inner_e:
-                raise RuntimeError(
-                    f"\n{'='*60}\n"
-                    f"[DATABASE ERROR]\n"
-                    f"Could not create database '{DB_CONFIG['database']}'.\n"
-                    f"Detail: {inner_e}\n"
-                    f"{'='*60}\n"
-                ) from inner_e
-
-        elif "password authentication" in err_msg or "authentication failed" in err_msg:
-            raise RuntimeError(
-                f"\n{'='*60}\n"
-                f"[DATABASE AUTHENTICATION ERROR]\n"
-                f"PostgreSQL rejected the login for user '{DB_CONFIG['user']}'.\n\n"
-                f"ACTION REQUIRED:\n"
-                f"1. Open: BACKEND/config/db_config.py\n"
-                f"2. Set the correct password for your PostgreSQL user.\n"
-                f"   (Currently set to: '{DB_CONFIG['password']}')\n"
-                f"{'='*60}\n"
-            ) from e
-
-        elif "connection refused" in err_msg or "could not connect" in err_msg:
-            raise RuntimeError(
-                f"\n{'='*60}\n"
-                f"[DATABASE CONNECTION ERROR]\n"
-                f"Cannot reach PostgreSQL server at {DB_CONFIG['host']}:{DB_CONFIG['port']}.\n\n"
-                f"ACTION REQUIRED:\n"
-                f"1. Ensure PostgreSQL is running.\n"
-                f"2. Check that port {DB_CONFIG['port']} is correct.\n"
-                f"{'='*60}\n"
-            ) from e
-
-        else:
-            raise RuntimeError(f"[DB] Cannot connect to PostgreSQL: {e}") from e
+    conn = psycopg2.connect(
+        DATABASE_URL,
+        sslmode="require",
+        cursor_factory=psycopg2.extras.RealDictCursor
+    )
+    conn.autocommit = True
+    return conn
 
 
 def _ensure_database_and_tables():
-    """Ensure database and tables exist."""
-    # Check if we already initialized to avoid overhead on every query
     if hasattr(_ensure_database_and_tables, "initialized") and _ensure_database_and_tables.initialized:
         return
 
-    # First, try to create the database if missing
     try:
-        conn = psycopg2.connect(
-            host=DB_CONFIG["host"], port=DB_CONFIG["port"],
-            user=DB_CONFIG["user"], password=DB_CONFIG["password"],
-            dbname=DB_CONFIG["database"]
-        )
-        conn.close()
-    except psycopg2.OperationalError as e:
-        err_msg = str(e).lower()
-        if "does not exist" in err_msg or "invalid catalog" in err_msg:
-            try:
-                admin_conn = psycopg2.connect(
-                    host=DB_CONFIG["host"], port=DB_CONFIG["port"],
-                    user=DB_CONFIG["user"], password=DB_CONFIG["password"],
-                    dbname="postgres"
-                )
-                admin_conn.autocommit = True
-                with admin_conn.cursor() as cur:
-                    db_name = DB_CONFIG["database"]
-                    cur.execute(f"SELECT 1 FROM pg_database WHERE datname = %s", (db_name,))
-                    if not cur.fetchone():
-                        cur.execute(f'CREATE DATABASE "{db_name}"')
-                admin_conn.close()
-            except Exception as inner_e:
-                pass
-
-    # Now create tables if missing
-    try:
-        conn = psycopg2.connect(
-            host=DB_CONFIG["host"], port=DB_CONFIG["port"],
-            user=DB_CONFIG["user"], password=DB_CONFIG["password"],
-            dbname=DB_CONFIG["database"]
-        )
+        conn = psycopg2.connect(DATABASE_URL, sslmode="require")
         conn.autocommit = True
+
         with conn.cursor() as cur:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS students (
@@ -163,9 +46,14 @@ def _ensure_database_and_tables():
                     is_active INTEGER DEFAULT 1,
                     face_enrolled BOOLEAN DEFAULT FALSE,
                     face_descriptor TEXT,
+                    fingerprint_template TEXT,
+                    fingerprint_credential_id TEXT,
+                    fingerprint_public_key TEXT,
+                    last_login TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS login_sessions (
                     id SERIAL PRIMARY KEY,
@@ -179,6 +67,7 @@ def _ensure_database_and_tables():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS attendance (
                     id SERIAL PRIMARY KEY,
@@ -192,9 +81,17 @@ def _ensure_database_and_tables():
                     face_match_status VARCHAR(20),
                     face_confidence DOUBLE PRECISION,
                     remarks TEXT,
-                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    recorded_by_role VARCHAR(20) DEFAULT 'student',
+                    marked_by_name VARCHAR(100),
+                    marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    grace_timer_started_at TIMESTAMP,
+                    grace_timer_passed BOOLEAN DEFAULT FALSE,
+                    fingerprint_verified BOOLEAN DEFAULT FALSE,
+                    face_enabled BOOLEAN DEFAULT TRUE
                 );
             """)
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS auto_verify_log (
                     id SERIAL PRIMARY KEY,
@@ -208,33 +105,7 @@ def _ensure_database_and_tables():
                     distance_meters DOUBLE PRECISION
                 );
             """)
-            cur.execute("""
-                ALTER TABLE auto_verify_log ADD COLUMN IF NOT EXISTS distance_meters DOUBLE PRECISION;
-            """)
-            cur.execute("""
-                ALTER TABLE auto_verify_log ADD COLUMN IF NOT EXISTS final_status VARCHAR(20);
-            """)
-            cur.execute("""
-                ALTER TABLE students ADD COLUMN IF NOT EXISTS year VARCHAR(50);
-            """)
-            cur.execute("""
-                ALTER TABLE students ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'student';
-            """)
-            cur.execute("""
-                ALTER TABLE students ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1;
-            """)
-            cur.execute("""
-                ALTER TABLE students ADD COLUMN IF NOT EXISTS fingerprint_template TEXT;
-            """)
-            cur.execute("""
-                ALTER TABLE students ADD COLUMN IF NOT EXISTS fingerprint_credential_id TEXT;
-            """)
-            cur.execute("""
-                ALTER TABLE students ADD COLUMN IF NOT EXISTS fingerprint_public_key TEXT;
-            """)
-            cur.execute("""
-                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS recorded_by_role VARCHAR(20) DEFAULT 'student';
-            """)
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS boundary_config (
                     id SERIAL PRIMARY KEY,
@@ -244,6 +115,7 @@ def _ensure_database_and_tables():
                     updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS boundary_locations (
                     id SERIAL PRIMARY KEY,
@@ -253,33 +125,7 @@ def _ensure_database_and_tables():
                     updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
-            cur.execute("""
-                ALTER TABLE login_sessions ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1;
-            """)
-            cur.execute("""
-                ALTER TABLE login_sessions ADD COLUMN IF NOT EXISTS logout_at TIMESTAMP;
-            """)
-            cur.execute("""
-                ALTER TABLE students ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
-            """)
-            cur.execute("""
-                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS marked_by_name VARCHAR(100);
-            """)
-            cur.execute("""
-                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-            """)
-            cur.execute("""
-                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS grace_timer_started_at TIMESTAMP;
-            """)
-            cur.execute("""
-                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS grace_timer_passed BOOLEAN DEFAULT FALSE;
-            """)
-            cur.execute("""
-                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS fingerprint_verified BOOLEAN DEFAULT FALSE;
-            """)
-            cur.execute("""
-                ALTER TABLE attendance ADD COLUMN IF NOT EXISTS face_enabled BOOLEAN DEFAULT TRUE;
-            """)
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS system_config (
                     setting_key VARCHAR(100) PRIMARY KEY,
@@ -287,45 +133,62 @@ def _ensure_database_and_tables():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
-            # Add unique constraint on attendance (student_id, date, recorded_by_role)
+
+            cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS year VARCHAR(50);")
+            cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'student';")
+            cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1;")
+            cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS fingerprint_template TEXT;")
+            cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS fingerprint_credential_id TEXT;")
+            cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS fingerprint_public_key TEXT;")
+            cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;")
+
+            cur.execute("ALTER TABLE login_sessions ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1;")
+            cur.execute("ALTER TABLE login_sessions ADD COLUMN IF NOT EXISTS logout_at TIMESTAMP;")
+
+            cur.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS recorded_by_role VARCHAR(20) DEFAULT 'student';")
+            cur.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS marked_by_name VARCHAR(100);")
+            cur.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;")
+            cur.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS grace_timer_started_at TIMESTAMP;")
+            cur.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS grace_timer_passed BOOLEAN DEFAULT FALSE;")
+            cur.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS fingerprint_verified BOOLEAN DEFAULT FALSE;")
+            cur.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS face_enabled BOOLEAN DEFAULT TRUE;")
+
             cur.execute("""
-                DO $$ 
-                BEGIN 
-                    -- Drop old constraints if they exist
+                DO $$
+                BEGIN
                     IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'attendance_student_id_date_key') THEN
                         ALTER TABLE attendance DROP CONSTRAINT attendance_student_id_date_key;
                     END IF;
+
                     IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_student_date') THEN
                         ALTER TABLE attendance DROP CONSTRAINT unique_student_date;
                     END IF;
-                    
-                    -- Add new refined constraint
-                    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'attendance_student_id_date_role_key') THEN
-                        ALTER TABLE attendance ADD CONSTRAINT attendance_student_id_date_role_key UNIQUE (student_id, date, recorded_by_role);
+
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint
+                        WHERE conname = 'attendance_student_id_date_role_key'
+                    ) THEN
+                        ALTER TABLE attendance
+                        ADD CONSTRAINT attendance_student_id_date_role_key
+                        UNIQUE (student_id, date, recorded_by_role);
                     END IF;
                 END $$;
             """)
+
             cur.execute("""
-                UPDATE students SET role = 'creator' WHERE email = 'gowsicklitheswaran@gmail.com';
+                UPDATE students
+                SET role = 'creator'
+                WHERE email = 'gowsicklitheswaran@gmail.com';
             """)
+
         conn.close()
         _ensure_database_and_tables.initialized = True
+
     except Exception as e:
         print(f"[DB] Error creating tables: {e}")
 
 
 def execute_query(query: str, params: tuple = (), fetch: str = "all"):
-    """
-    Execute a SELECT query and return results.
-
-    Args:
-        query  : SQL query string (use %s for parameters)
-        params : Tuple of parameters (parameterized, safe against SQL injection)
-        fetch  : 'all' = list of dicts | 'one' = single dict | 'none' = None
-
-    Returns:
-        Result rows or None
-    """
     conn = get_connection()
     try:
         with conn.cursor() as cursor:
@@ -334,20 +197,12 @@ def execute_query(query: str, params: tuple = (), fetch: str = "all"):
                 return cursor.fetchall()
             elif fetch == "one":
                 return cursor.fetchone()
-            else:
-                return None
+            return None
     finally:
         conn.close()
 
 
 def execute_insert(query: str, params: tuple = ()):
-    """
-    Execute an INSERT / UPDATE / DELETE and return lastrowid (via RETURNING id).
-    For PostgreSQL, INSERT must use RETURNING id to get the inserted row ID.
-
-    Returns:
-        lastrowid (int) for INSERT with RETURNING, or 0 otherwise
-    """
     conn = get_connection()
     try:
         with conn.cursor() as cursor:
@@ -356,7 +211,6 @@ def execute_insert(query: str, params: tuple = ()):
             try:
                 row = cursor.fetchone()
                 if row:
-                    # Support both dict-style and index-style results
                     if isinstance(row, dict):
                         return list(row.values())[0]
                     return row[0]
