@@ -113,10 +113,14 @@ async function saveBoundaryLocation() {
         address: "Campus Boundary"
     };
 
+    const token = localStorage.getItem('sat_token');
     try {
-        const res = await fetch('/api/location/save-boundary', {
+        const res = await fetch('https://smart-check-production.up.railway.app/api/location/save-boundary', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify(payload)
         });
         

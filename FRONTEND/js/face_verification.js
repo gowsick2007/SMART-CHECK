@@ -83,7 +83,7 @@ async function startScan() {
         const endpoint = isEnrollMode ? '/api/face/enroll' : '/api/face/verify';
         const payload = isEnrollMode ? { image_base64: imageData } : { student_id: user.student_id, image: imageData };
         
-        const res = await fetch(endpoint, {
+        const res = await fetch(`https://smart-check-production.up.railway.app${endpoint}`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',

@@ -2,7 +2,7 @@
 // attendance.js — Dashboard Orchestration & Attendance Marking
 // ============================================================
 
-const API = 'http://127.0.0.1:5000';
+const API = 'https://smart-check-production.up.railway.app';
 let currentStudent = null;
 let gpsResult      = null;
 
@@ -279,7 +279,7 @@ function runAutoCheck() {
     const studentId = user.student_id || storedStudent.student_id;
     if (!studentId) return;
 
-    fetch('/api/attendance/auto-verify/check', {
+    fetch(`${API}/api/attendance/auto-verify/check`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',

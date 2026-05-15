@@ -12,7 +12,7 @@ async function loadHistory() {
     if (!user.student_id) return;
 
     try {
-        const res = await fetch(`/api/attendance/history?student_id=${user.student_id}&_t=${Date.now()}`, {
+        const res = await fetch(`https://smart-check-production.up.railway.app/api/attendance/history?student_id=${user.student_id}&_t=${Date.now()}`, {
             headers: { 
                 'Authorization': `Bearer ${token}`,
                 'Cache-Control': 'no-cache',

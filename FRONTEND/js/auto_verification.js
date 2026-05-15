@@ -73,9 +73,13 @@ async function runAutoVerification() {
         const faceVerified = true; 
 
         // 3. Mark Attendance / Auto-Check
-        const res = await fetch('/api/attendance/auto-mark', {
+        const token = localStorage.getItem('sat_token');
+        const res = await fetch('https://smart-check-production.up.railway.app/api/attendance/auto-mark', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({
                 student_id: user.student_id,
                 latitude: lat,
