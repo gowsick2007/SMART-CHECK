@@ -92,8 +92,8 @@ COLLEGE_LOCATION = {{
     "address": "{address}",
 }}
 
-# Active radius — strictly set to 22.5m for attendance validation
-ACTIVE_GEOFENCE_RADIUS = 22.5  # metres
+# Active radius — strictly set to 50m for attendance validation
+ACTIVE_GEOFENCE_RADIUS = 50  # metres
 
 COLLEGE_LAT = {lat}
 COLLEGE_LNG = {lng}

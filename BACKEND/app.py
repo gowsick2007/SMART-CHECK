@@ -124,7 +124,7 @@ def create_app(config=None):
         address = data.get("address") or data.get("boundary_name") or "Custom Campus Boundary"
         lat = data.get("latitude") or data.get("lat")
         lng = data.get("longitude") or data.get("lng")
-        radius = data.get("radius") or 22.5
+        radius = data.get("radius") or 50
         
         if lat is None or lng is None:
             return jsonify({"success": False, "error": "Bad Request", "message": "Latitude and longitude are required."}), 400
@@ -241,8 +241,8 @@ COLLEGE_LOCATION = {{
     "address": "{address}",
 }}
 
-# Active radius — strictly set to 22.5m for attendance validation
-ACTIVE_GEOFENCE_RADIUS = 22.5  # metres
+# Active radius — strictly set to 50m for attendance validation
+ACTIVE_GEOFENCE_RADIUS = 50  # metres
 
 COLLEGE_LAT = {lat}
 COLLEGE_LNG = {lng}
@@ -885,7 +885,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         for log in latest_logs:
             if log.get("latitude") and log.get("longitude"):
                 dist = haversine_local(log["latitude"], log["longitude"], c_lat, c_lng)
-                if dist <= 22.5: inside_count += 1
+                if dist <= 50: inside_count += 1
                 else: outside_count += 1
 
         return jsonify({
@@ -926,7 +926,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             except Exception:
                 COLLEGE_LAT, COLLEGE_LNG = 0.0, 0.0
         
-        ACTIVE_GEOFENCE_RADIUS = 22.5
+        ACTIVE_GEOFENCE_RADIUS = 50
         
         # Get all active students
         students = execute_query(

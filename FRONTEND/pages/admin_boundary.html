@@ -627,7 +627,7 @@
     // Set input fields by default if they exist
     document.getElementById('bound-lat').value = defaultLat;
     document.getElementById('bound-lng').value = defaultLng;
-    document.getElementById('bound-radius').value = 22.5;
+    document.getElementById('bound-radius').value = 50;
 
     map = new google.maps.Map(document.getElementById("map"), {
       center: { lat: defaultLat, lng: defaultLng },
@@ -652,7 +652,7 @@
 
     circle = new google.maps.Circle({
       map: map,
-      radius: 22.5,
+      radius: 50,
       fillColor: '#00ffcc',
       fillOpacity: 0.2,
       strokeColor: '#00ffcc',

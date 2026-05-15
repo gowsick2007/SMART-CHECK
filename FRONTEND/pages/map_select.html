@@ -286,7 +286,7 @@
         color: '#00ffcc',
         fillColor: '#00ffcc',
         fillOpacity: 0.15,
-        radius: 22.5 // Strictly 22.5 meters
+        radius: 50 // Strictly 50 meters
       }).addTo(map);
 
       // Handle marker drag
@@ -373,7 +373,7 @@
       localStorage.setItem('last_selected_address', addressText);
 
       // Also set the custom boundary in sessionStorage to align with location.js integration
-      const customLoc = { lat: selectedLat, lon: selectedLng, radius: 22.5, name: addressText };
+      const customLoc = { lat: selectedLat, lon: selectedLng, radius: 50, name: addressText };
       sessionStorage.setItem('custom_boundary_location', JSON.stringify(customLoc));
 
       const API_BASE = 'http://127.0.0.1:5000';

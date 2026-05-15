@@ -9,8 +9,8 @@ COLLEGE_LOCATION = {
     "address": "Campus Boundary",
 }
 
-# Active radius — strictly set to 22.5m for attendance validation
-ACTIVE_GEOFENCE_RADIUS = 22.5  # metres
+# Active radius — strictly set to 50m for attendance validation
+ACTIVE_GEOFENCE_RADIUS = 50  # metres
 
 COLLEGE_LAT = 10.928211218537038
 COLLEGE_LNG = 76.97128236293793
