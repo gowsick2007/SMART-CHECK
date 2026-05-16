@@ -243,9 +243,6 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
             "grace_timer_passed": timer_passed,
             "inserted": should_insert
         }
-maining)
-        }
     except Exception as e:
         print(f"Database Error in store_auto_check: {e}")
         return {"success": False, "status": "error", "grace_time_remaining": 0}
-
