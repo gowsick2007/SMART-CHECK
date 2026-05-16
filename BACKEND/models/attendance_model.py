@@ -29,10 +29,10 @@ class AttendanceModel:
                 marked_at = CURRENT_TIMESTAMP
             RETURNING id
         """
-        location_val_int = 1 if location_valid else 0
+        location_val_bool = bool(location_valid)
         return execute_insert(query, (
             student_id, date, time, status, latitude, longitude,
-            location_val_int, face_match_status, face_confidence, remarks
+            location_val_bool, face_match_status, face_confidence, remarks
         ))
 
     @staticmethod
@@ -224,7 +224,7 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
             # Insert into attendance for Student History
             # Requirement 7: Student History must show every auto-verify result.
             # Requirement 2: Do not overwrite old records.
-            location_valid_int = 1 if is_inside else 0
+            location_valid_bool = True if is_inside else False
             face_match_status = 'success' if face_verified else 'failed'
             dist_suffix = "INSIDE" if is_inside else "OUTSIDE"
             grace_suffix = " (Grace Period)" if (not is_inside and not timer_passed) else ""
@@ -238,7 +238,7 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'system', %s, %s, CURRENT_TIMESTAMP)
             """, (
                 student_id, current_date, now.strftime("%H:%M:%S"), current_status, 
-                lat, lng, location_valid_int, face_match_status, remarks,
+                lat, lng, location_valid_bool, face_match_status, remarks,
                 timer_start, timer_passed
             ))
         
