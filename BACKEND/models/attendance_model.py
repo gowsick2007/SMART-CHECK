@@ -160,9 +160,9 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
         # 30m Periodic Logging + 5m Grace Period Implementation
         now = datetime.now()
         current_date = now.date()
-        
-        # Buffer the radius slightly (10m) to account for mobile GPS drift
-        ALLOWED_RADIUS = RADIUS + 10 
+        from CONFIG.college_location_config import RADIUS
+        # Buffer the radius slightly (15m) to account for mobile GPS drift
+        ALLOWED_RADIUS = RADIUS + 15 
         is_inside = distance <= ALLOWED_RADIUS
         gps_status = 'inside' if is_inside else 'outside'
 
@@ -176,7 +176,8 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
         prev = cursor.fetchone()
         
         # Determine status for this check
-        # Requirement 3: If INSIDE + face matched -> PRESENT
+        # Requirement: If INSIDE + face matched -> PRESENT
+        # If OUTSIDE -> start 5 min grace. If still OUTSIDE after 5 min -> ABSENT.
         current_status = 'present' if (is_inside and face_verified) else 'absent'
         
         # Calculate Grace Timer
@@ -221,8 +222,9 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
             # Requirement 2: Do not overwrite old records.
             location_valid_int = 1 if is_inside else 0
             face_match_status = 'success' if face_verified else 'failed'
-            dist_suffix = "inside" if is_inside else "outside"
-            remarks = f"{distance:.1f}m {dist_suffix}"
+            dist_suffix = "INSIDE" if is_inside else "OUTSIDE"
+            grace_suffix = " (Grace Period)" if (not is_inside and not timer_passed) else ""
+            remarks = f"{distance:.1f}m {dist_suffix}{grace_suffix}"
 
             cursor.execute("""
                 INSERT INTO attendance

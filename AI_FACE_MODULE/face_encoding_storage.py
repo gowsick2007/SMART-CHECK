@@ -2,6 +2,7 @@
 # face_encoding_storage.py — Face Encoding Generation
 # ============================================================
 
+import numpy as np
 from typing import Optional
 
 

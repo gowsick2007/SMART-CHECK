@@ -175,9 +175,9 @@ def mark_attendance():
 
     query = """
         INSERT INTO attendance 
-            (student_id, date, time, status, recorded_by_role, remarks, marked_by_name)
+            (student_id, date, time, status, recorded_by_role, remarks, marked_by_name, location_valid)
         VALUES 
-            (%s, %s, %s, %s, %s, %s, %s)
+            (%s, %s, %s, %s, %s, %s, %s, TRUE)
         RETURNING id
     """
     execute_insert(query, (

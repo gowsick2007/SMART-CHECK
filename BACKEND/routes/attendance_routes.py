@@ -45,11 +45,13 @@ def auto_verify_check():
     from BACKEND.services.geofence_service import calculate_distance
     distance = calculate_distance(lat, lng, COLLEGE_LAT, COLLEGE_LNG)
 
-    # Combined status: Only 'present' if GPS is inside AND required biometrics are verified
-    # Requirement: 10m tolerance for reliability
-    ALLOWED_RADIUS = RADIUS + 10
+    from CONFIG.college_location_config import RADIUS
+    # Requirement: 15m tolerance for reliability (Total 65m)
+    ALLOWED_RADIUS = RADIUS + 15
     is_inside = distance <= ALLOWED_RADIUS
     
+    print(f"[GPS] Student: {lat},{lng} | College: {COLLEGE_LAT},{COLLEGE_LNG} | Dist: {distance:.1f}m | Result: {'INSIDE' if is_inside else 'OUTSIDE'}")
+
     # Check if face is needed and verified
     # STRICT RULE: Auto-verify ONLY marks present if face is verified AND inside boundary
     status = 'present' if (is_inside and face_verified) else 'absent'

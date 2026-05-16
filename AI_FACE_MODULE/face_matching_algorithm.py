@@ -2,6 +2,7 @@
 # face_matching_algorithm.py — Face Comparison & Matching
 # ============================================================
 
+import numpy as np
 from typing import List, Optional
 
 
