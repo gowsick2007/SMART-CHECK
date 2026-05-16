@@ -11,3 +11,4 @@ Pillow==10.4.0
 pytz==2024.1
 python-dotenv
 PyJWT==2.8.0
+# force rebuild
