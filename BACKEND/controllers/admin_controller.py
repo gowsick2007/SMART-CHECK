@@ -4,12 +4,11 @@
 
 from flask import request, jsonify
 from DATABASE.connection.db_connection import execute_query, execute_insert
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import functools
-import pytz
 
 ADMIN_TOKEN = "smart-attendance-admin-2026"
-IST = pytz.timezone('Asia/Kolkata')
+IST = timezone(timedelta(hours=5, minutes=30))  # Asia/Kolkata — no pytz needed
 
 def get_current_date():
     return datetime.now(IST).date()

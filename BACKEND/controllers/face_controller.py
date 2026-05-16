@@ -80,10 +80,27 @@ def verify_face(current_student=None):
     if not descriptor or len(descriptor) != 128:
         return jsonify({"success": False, "message": "Valid 128-d biometric descriptor required."}), 400
 
-    # 2. Run Comparison
+    # 2. Guard: verify face_enrolled AND descriptor exists in DB before running comparison
+    from DATABASE.connection.db_connection import execute_query as _eq
+    face_row = _eq(
+        "SELECT face_enrolled, face_descriptor FROM students WHERE student_id = %s",
+        (student_id,), fetch="one"
+    )
+    face_enrolled = bool(face_row.get('face_enrolled')) if face_row else False
+    face_has_descriptor = bool(face_row.get('face_descriptor')) if face_row else False
+
+    if not face_enrolled or not face_has_descriptor:
+        return jsonify({
+            "success": False,
+            "matched": False,
+            "face_status": "not_registered",
+            "message": "Face not registered for this student. Please enroll first."
+        }), 200
+
+    # 3. Run Comparison
     result = FaceService.verify_face(student_id, descriptor)
     
-    # 3. Final System Finalization Save
+    # 4. Final System Finalization Save
     if result.get("matched"):
         from DATABASE.connection.db_connection import get_connection, execute_query
         import datetime

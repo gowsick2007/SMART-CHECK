@@ -156,15 +156,17 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
         auto_verify_log (admin panel)
     """
     from DATABASE.connection.db_connection import get_connection
-    from datetime import datetime
-    import pytz
-    IST = pytz.timezone('Asia/Kolkata')
+    from datetime import datetime, timezone, timedelta
+    # Use stdlib timezone — no external dependency, no NameError risk
+    IST = timezone(timedelta(hours=5, minutes=30))
+    UTC = timezone.utc
     try:
         conn = get_connection()
         import psycopg2.extras
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        now = datetime.now(IST)
+        now = datetime.now(IST)          # IST-aware
+        now_utc = now.astimezone(UTC)    # UTC-aware (for DB comparisons)
         current_date = now.date()
 
         from CONFIG.college_location_config import RADIUS
@@ -173,13 +175,18 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
         is_inside = distance <= ALLOWED_RADIUS
         gps_status = 'inside' if is_inside else 'outside'
 
-        # ── Step 1: Check face enrollment status from students table ──────────
+        # ── Step 1: Check face enrollment + descriptor from students table ──────
         cursor.execute(
-            "SELECT face_enrolled FROM students WHERE student_id = %s",
+            "SELECT face_enrolled, face_descriptor FROM students WHERE student_id = %s",
             (student_id,)
         )
         student_row = cursor.fetchone()
         face_enrolled = bool(student_row.get('face_enrolled')) if student_row else False
+        face_has_descriptor = bool(student_row.get('face_descriptor')) if student_row else False
+
+        # If enrolled flag is True but descriptor is NULL → treat as not registered
+        if face_enrolled and not face_has_descriptor:
+            face_enrolled = False
 
         # Resolve face status label for auto_verify_log
         if not face_enrolled:
@@ -204,7 +211,11 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
         last_log = cursor.fetchone()
 
         if last_log:
-            diff_secs = (now - last_log['check_time']).total_seconds()
+            # DB check_time is naive UTC — make it UTC-aware, then compare with now_utc
+            ct = last_log['check_time']
+            if ct.tzinfo is None:
+                ct = ct.replace(tzinfo=UTC)   # treat naive DB value as UTC
+            diff_secs = (now_utc - ct).total_seconds()
 
             # Anti-rapid filter: block if < 10 seconds since last insert
             if diff_secs < 10:

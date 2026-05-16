@@ -974,9 +974,8 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     def api_admin_mark_attendance(current_student=None):
         from DATABASE.connection.db_connection import execute_query, execute_insert
         from flask import request
-        from datetime import datetime, date, time, timedelta
-        import pytz
-        IST = pytz.timezone('Asia/Kolkata')
+        from datetime import datetime, date, time, timedelta, timezone
+        IST = timezone(timedelta(hours=5, minutes=30))
         
         data = request.get_json() or {}
         student_id = data.get("student_id")
@@ -1037,7 +1036,8 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     def api_admin_manual_attendance(current_student=None):
         from DATABASE.connection.db_connection import execute_insert, execute_query
         from flask import request
-        from datetime import datetime, date, time, timedelta
+        from datetime import datetime, date, time, timedelta, timezone
+        IST = timezone(timedelta(hours=5, minutes=30))
         data = request.get_json() or {}
         username = data.get("username")
         status   = (data.get("status") or "present").lower()
