@@ -10,7 +10,7 @@ async function loadProfile() {
     }
 
     try {
-        const res = await fetch('https://smart-check-production.up.railway.app/api/student/profile', {
+        const res = await fetch(`${API_BASE}/api/student/profile`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'

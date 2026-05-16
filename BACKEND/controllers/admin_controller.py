@@ -178,11 +178,6 @@ def mark_attendance():
             (student_id, date, time, status, recorded_by_role, remarks, marked_by_name)
         VALUES 
             (%s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (student_id, date) DO UPDATE SET
-            status = EXCLUDED.status,
-            remarks = 'Attendance manually updated',
-            marked_by_name = EXCLUDED.marked_by_name,
-            recorded_by_role = EXCLUDED.recorded_by_role
         RETURNING id
     """
     execute_insert(query, (
@@ -249,6 +244,7 @@ def get_all_students_list():
         SELECT DISTINCT ON (student_id) 
             student_id, gps_status, distance_meters, check_time 
         FROM auto_verify_log 
+        WHERE DATE(check_time) = CURRENT_DATE
         ORDER BY student_id, check_time DESC
     """)
     

@@ -92,6 +92,7 @@ async function runAutoVerification() {
         
         if (data.success) {
             localStorage.setItem('last_auto_verification', Date.now());
+            localStorage.setItem('last_auto_status', data.is_inside ? 'inside' : 'outside');
             
             // Notification System
             if (data.is_inside) {
@@ -152,12 +153,19 @@ document.addEventListener('DOMContentLoaded', () => {
         updateScheduleUI();
         if (!isWithinSchedule()) return; // Halt counting/running outside schedule
         
-        const lastCheck = localStorage.getItem('last_auto_verification') || 0;
-        const diff = Date.now() - lastCheck;
-        if (diff >= VERIFICATION_INTERVAL) {
+        const lastCheck = parseInt(localStorage.getItem('last_auto_verification') || 0);
+        const lastStatus = localStorage.getItem('last_auto_status') || 'inside';
+        const now = Date.now();
+        const diff = now - lastCheck;
+        
+        // If last was outside, use a 5-minute interval for grace period re-checks
+        // otherwise use the standard 30-minute interval.
+        const currentInterval = (lastStatus === 'outside') ? (5 * 60 * 1000) : VERIFICATION_INTERVAL;
+        
+        if (diff >= currentInterval) {
             runAutoVerification();
         } else {
-            updateCountdownUI(VERIFICATION_INTERVAL - diff);
+            updateCountdownUI(currentInterval - diff);
         }
     }, 1000);
 });

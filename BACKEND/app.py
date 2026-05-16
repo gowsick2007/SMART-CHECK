@@ -933,11 +933,12 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             "SELECT student_id, name, email, department FROM students WHERE is_active = 1 AND role NOT IN ('creator','admin') ORDER BY name ASC",
             fetch="all") or []
 
-        # Get latest GPS log per student from auto_verify_log
+        # Get latest GPS log per student from auto_verify_log (Today only)
         logs = execute_query("""
             SELECT DISTINCT ON (student_id)
                 student_id, gps_status, latitude, longitude, distance_meters, check_time
             FROM auto_verify_log
+            WHERE DATE(check_time) = CURRENT_DATE
             ORDER BY student_id, check_time DESC
         """, fetch="all") or []
         log_map = {l["student_id"]: l for l in logs}

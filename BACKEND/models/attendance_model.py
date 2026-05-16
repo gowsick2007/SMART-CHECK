@@ -48,8 +48,8 @@ class AttendanceModel:
 
     @staticmethod
     def get_by_student_and_date(student_id, date):
-        """Check if automated attendance was already marked for a specific date."""
-        query = "SELECT * FROM attendance WHERE student_id = %s AND date = %s AND recorded_by_role = 'system'"
+        """Check if automated attendance was already marked for a specific date (get latest)."""
+        query = "SELECT * FROM attendance WHERE student_id = %s AND date = %s AND recorded_by_role = 'system' ORDER BY marked_at DESC LIMIT 1"
         return execute_query(query, (student_id, date), fetch="one")
 
     @staticmethod
@@ -164,125 +164,86 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
         is_inside = distance <= RADIUS
         gps_status = 'inside' if is_inside else 'outside'
 
-        # 1. ALWAYS Save to raw log (even outside hours)
+        # Fetch latest record for status comparison
         cursor.execute("""
-            INSERT INTO auto_verify_log 
-            (student_id, latitude, longitude, distance_meters, gps_status, final_status, check_time)
-            VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-        """, (student_id, lat, lng, distance, gps_status, status))
-        
-        # 2. Hard enforcement of 9 AM - 9 PM schedule for ATTENDANCE marking
-        if not (9 <= now.hour < 21): 
-            cursor.close()
-            conn.close()
-            return {
-                "success": False, 
-                "message": "Outside active verification hours (9 AM - 9 PM)", 
-                "status": "idle", 
-                "is_inside": is_inside,
-                "grace_timer_passed": False,
-                "grace_time_remaining": 0
-            }
-        
-        # 3. Fetch existing timer data for today
-        cursor.execute("""
-            SELECT status, recorded_by_role, marked_at,
-                   grace_timer_started_at, grace_timer_passed, fingerprint_verified 
+            SELECT status, location_valid, marked_at, grace_timer_started_at 
             FROM attendance 
             WHERE student_id = %s AND date = %s AND recorded_by_role = 'system'
+            ORDER BY marked_at DESC LIMIT 1
         """, (student_id, current_date))
-        existing = cursor.fetchone()
+        prev = cursor.fetchone()
         
+        # Determine status for this check
+        # Requirement 3: If INSIDE + face matched -> PRESENT
+        current_status = 'present' if (is_inside and face_verified) else 'absent'
+        
+        # Calculate Grace Timer
         timer_start = None
         timer_passed = False
-        last_status = None
-        last_role = 'system'
-        last_at = None
-        
-        if existing:
-            timer_start = existing.get('grace_timer_started_at')
-            timer_passed = bool(existing.get('grace_timer_passed'))
-            last_status = existing.get('status')
-            last_role = existing.get('recorded_by_role', 'system')
-            last_at = existing.get('marked_at')
-        
-        # 4. Calculate Grace Timer states
         if not is_inside:
-            # OUTSIDE: Initialize or check duration
-            if not timer_start:
-                timer_start = now # Start timer now
+            if prev and prev.get('grace_timer_started_at'):
+                timer_start = prev['grace_timer_started_at']
+            else:
+                timer_start = now
             
             elapsed = (now - timer_start).total_seconds()
             if elapsed > 300: # 5 mins
                 timer_passed = True
         
-        location_valid = 1 if is_inside else 0
-        
-        # ── Status Calculation ──
-        # We now trust the 'status' passed from the route, which already 
-        # accounts for global toggles (Face ON/OFF etc).
-        # We only ensure distance-based grace timer logic if needed.
-        
-        dist_suffix = "inside" if is_inside else "outside"
-        remarks = f"{distance:.1f}m {dist_suffix}"
-        
-        # Face match display logic for history: Matched only if real face verified
-        face_match_status = 'success' if face_verified else 'not_attempted'
-        
-        # ── 30-minute Auto Update Throttle ──
-        should_update_history = True
-        
-        # 2. If existing is system, throttle updates to every 30 mins unless status changed
-        if last_at and last_role == 'system':
-            if isinstance(last_at, str):
-                try: last_at = datetime.fromisoformat(last_at)
-                except: pass
-            diff_auto = (now - last_at).total_seconds() / 60
-            if diff_auto < 30 and last_status == status:
-                should_update_history = False
+        # THROTTLE & TRIGGER LOGIC
+        # 1. Periodic: Every 30 mins
+        # 2. Reactive: If status changed (e.g. Outside -> Inside or vice versa)
+        should_insert = True
+        if prev:
+            diff_mins = (now - prev['marked_at']).total_seconds() / 60
+            # If status hasn't changed and it's been less than 30 mins, don't insert
+            if current_status == prev['status'] and diff_mins < 30:
+                # Special case: If we were in grace but now timer passed, we should update status?
+                # But requirement says "Every 30 min result must insert... Do not overwrite"
+                # So we wait for the next 30-min block or status change.
+                should_insert = False
 
-        if should_update_history:
-            # Upsert core attendance record
+        if should_insert:
+            # Insert into auto_verify_log for Admin Auto Verification page
+            # Requirement 8: Admin Auto Verification page must show every auto-verify result.
+            cursor.execute("""
+                INSERT INTO auto_verify_log 
+                (student_id, latitude, longitude, distance_meters, gps_status, face_status, final_status, check_time)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            """, (student_id, lat, lng, distance, gps_status, ('verified' if face_verified else 'failed'), current_status))
+
+            # Insert into attendance for Student History
+            # Requirement 7: Student History must show every auto-verify result.
+            # Requirement 2: Do not overwrite old records.
+            location_valid_int = 1 if is_inside else 0
+            face_match_status = 'success' if face_verified else 'failed'
+            dist_suffix = "inside" if is_inside else "outside"
+            remarks = f"{distance:.1f}m {dist_suffix}"
+
             cursor.execute("""
                 INSERT INTO attendance
                     (student_id, date, time, status, latitude, longitude,
                      location_valid, face_match_status, remarks, recorded_by_role,
                      grace_timer_started_at, grace_timer_passed, marked_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'system', %s, %s, CURRENT_TIMESTAMP)
-                ON CONFLICT (student_id, date, recorded_by_role) DO UPDATE SET
-                    status = EXCLUDED.status,
-                    time = EXCLUDED.time,
-                    latitude = EXCLUDED.latitude,
-                    longitude = EXCLUDED.longitude,
-                    location_valid = EXCLUDED.location_valid,
-                    face_match_status = EXCLUDED.face_match_status,
-                    remarks = EXCLUDED.remarks,
-                    grace_timer_started_at = COALESCE(attendance.grace_timer_started_at, EXCLUDED.grace_timer_started_at),
-                    grace_timer_passed = EXCLUDED.grace_timer_passed,
-                    marked_at = CURRENT_TIMESTAMP
             """, (
-                student_id, current_date, now.strftime("%H:%M:%S"), status, 
-                lat, lng, location_valid, face_match_status, remarks,
+                student_id, current_date, now.strftime("%H:%M:%S"), current_status, 
+                lat, lng, location_valid_int, face_match_status, remarks,
                 timer_start, timer_passed
             ))
-        
         
         conn.commit()
         cursor.close()
         conn.close()
         
-        # Calculate return data
-        remaining = 0
-        if timer_start and not is_inside and not timer_passed:
-            current_elapsed = (datetime.now() - timer_start).total_seconds()
-            remaining = max(0, 300 - current_elapsed)
-            
         return {
             "success": True,
-            "status": status,
+            "status": current_status,
             "is_inside": is_inside,
             "grace_timer_passed": timer_passed,
-            "grace_time_remaining": int(remaining)
+            "inserted": should_insert
+        }
+maining)
         }
     except Exception as e:
         print(f"Database Error in store_auto_check: {e}")
