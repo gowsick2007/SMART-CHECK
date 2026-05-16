@@ -720,7 +720,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
                     remarks = 'Fingerprint + boundary passed',
                     face_enabled = FALSE,
                     marked_at = CURRENT_TIMESTAMP
-            """, (student_id, now.date(), now.strftime("%H:%M:%S"), final_status, lat, lng, (1 if is_inside else 0)))
+            """, (student_id, now.date(), now.strftime("%H:%M:%S"), final_status, lat, lng, (True if is_inside else False)))
         else:
              # Intermediate save, but DO NOT seal final status yet
              execute_insert("""
@@ -731,7 +731,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
                     fingerprint_verified = TRUE,
                     face_enabled = TRUE,
                     marked_at = CURRENT_TIMESTAMP
-            """, (student_id, now.date(), now.strftime("%H:%M:%S"), lat, lng, (1 if is_inside else 0)))
+            """, (student_id, now.date(), now.strftime("%H:%M:%S"), lat, lng, (True if is_inside else False)))
              
         return jsonify({
             "success": True,
