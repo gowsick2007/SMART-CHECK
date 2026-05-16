@@ -92,6 +92,13 @@ def _ensure_database_and_tables():
                 );
             """)
 
+            # Remove restrictive unique constraint to allow multiple records per day
+            try:
+                cur.execute("ALTER TABLE attendance DROP CONSTRAINT IF EXISTS unique_student_date")
+                cur.execute("ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_student_id_date_key")
+            except:
+                pass
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS auto_verify_log (
                     id SERIAL PRIMARY KEY,

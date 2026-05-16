@@ -157,11 +157,13 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
         import psycopg2.extras
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
+        # 30m Periodic Logging + 5m Grace Period Implementation
         now = datetime.now()
         current_date = now.date()
         
-        from CONFIG.college_location_config import RADIUS
-        is_inside = distance <= RADIUS
+        # Buffer the radius slightly (10m) to account for mobile GPS drift
+        ALLOWED_RADIUS = RADIUS + 10 
+        is_inside = distance <= ALLOWED_RADIUS
         gps_status = 'inside' if is_inside else 'outside'
 
         # Fetch latest record for status comparison
@@ -196,12 +198,14 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
         should_insert = True
         if prev:
             diff_mins = (now - prev['marked_at']).total_seconds() / 60
-            # If status hasn't changed and it's been less than 30 mins, don't insert
+            # Condition 1: Every 30 mins regardless of status
+            # Condition 2: If status changes (Outside -> Inside), insert immediately
             if current_status == prev['status'] and diff_mins < 30:
-                # Special case: If we were in grace but now timer passed, we should update status?
-                # But requirement says "Every 30 min result must insert... Do not overwrite"
-                # So we wait for the next 30-min block or status change.
                 should_insert = False
+            
+            # If they just came inside, we MUST mark them present immediately
+            if is_inside and prev['status'] == 'absent' and not prev['location_valid']:
+                should_insert = True
 
         if should_insert:
             # Insert into auto_verify_log for Admin Auto Verification page

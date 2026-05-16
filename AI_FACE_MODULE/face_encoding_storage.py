@@ -2,8 +2,6 @@
 # face_encoding_storage.py — Face Encoding Generation
 # ============================================================
 
-import face_recognition
-import numpy as np
 from typing import Optional
 
 
@@ -17,6 +15,8 @@ def encode_face_from_image(image_path: str) -> Optional[np.ndarray]:
     Returns:
         128-d numpy array (face encoding) or None if no face detected
     """
+    import face_recognition
+    import numpy as np
     try:
         image = face_recognition.load_image_file(image_path)
         encodings = face_recognition.face_encodings(image)
@@ -38,6 +38,8 @@ def encode_face_from_frame(frame: np.ndarray) -> Optional[np.ndarray]:
     Returns:
         128-d numpy array or None
     """
+    import face_recognition
+    import numpy as np
     try:
         # Convert BGR to RGB using numpy slicing (no cv2 needed)
         rgb = frame[:, :, ::-1]
@@ -62,6 +64,8 @@ def encode_face_from_base64(base64_bytes: bytes) -> Optional[np.ndarray]:
     """
     import io
     from PIL import Image
+    import face_recognition
+    import numpy as np
 
     try:
         image = Image.open(io.BytesIO(base64_bytes)).convert("RGB")

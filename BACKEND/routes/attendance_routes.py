@@ -45,30 +45,12 @@ def auto_verify_check():
     from BACKEND.services.geofence_service import calculate_distance
     distance = calculate_distance(lat, lng, COLLEGE_LAT, COLLEGE_LNG)
 
-    # Check global configs
-    from DATABASE.connection.db_connection import execute_query
-    res_face = execute_query("SELECT setting_value FROM system_config WHERE setting_key = 'face_verification_enabled'", fetch="one")
-    face_required = (res_face["setting_value"] == "ON") if res_face else True
-    
-    res_fp = execute_query("SELECT setting_value FROM system_config WHERE setting_key = 'fingerprint_verification_enabled'", fetch="one")
-    fp_required = (res_fp["setting_value"] == "ON") if res_fp else False
-
     # Combined status: Only 'present' if GPS is inside AND required biometrics are verified
-    is_inside = distance <= RADIUS
+    # Requirement: 10m tolerance for reliability
+    ALLOWED_RADIUS = RADIUS + 10
+    is_inside = distance <= ALLOWED_RADIUS
     
     # Check if face is needed and verified
-    face_ok = True
-    if face_required:
-        face_ok = face_verified
-        
-    # Check if fingerprint is needed (if we ever implement it for auto)
-    fp_ok = True
-    if fp_required:
-        # Assuming for now auto-verify doesn't handle real-time fingerprint 
-        # unless it was verified earlier in the session.
-        # For now, let's just focus on face as requested.
-        pass
-
     # STRICT RULE: Auto-verify ONLY marks present if face is verified AND inside boundary
     status = 'present' if (is_inside and face_verified) else 'absent'
 
@@ -80,7 +62,7 @@ def auto_verify_check():
         "status": result.get("status", status), 
         "distance": round(distance, 1), 
         "face_verified": face_verified,
-        "is_inside": result.get("is_inside", is_inside),
+        "is_inside": is_inside,
         "grace_time_remaining": result.get("grace_time_remaining", 0),
         "grace_timer_passed": result.get("grace_timer_passed", False)
     })

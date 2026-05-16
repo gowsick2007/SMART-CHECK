@@ -2,8 +2,6 @@
 # face_matching_algorithm.py — Face Comparison & Matching
 # ============================================================
 
-import numpy as np
-import face_recognition
 from typing import List, Optional
 
 
@@ -18,6 +16,7 @@ def compute_face_distance(stored_descriptor: np.ndarray, live_descriptor: np.nda
     Returns:
         Distance as float. Lower = more similar. Typically < 0.5 = same person.
     """
+    import numpy as np
     return float(np.linalg.norm(stored_descriptor - live_descriptor))
 
 
@@ -49,6 +48,7 @@ def find_best_match(live_descriptor: np.ndarray, candidates: List[dict], thresho
     """
     best_distance = float("inf")
     best_student_id = None
+    import numpy as np
 
     for candidate in candidates:
         stored = np.array(candidate["face_descriptor"])
@@ -72,6 +72,7 @@ def batch_compare(live_descriptor: np.ndarray, stored_descriptors: List[np.ndarr
     Returns:
         List of booleans indicating matches
     """
+    import face_recognition
     results = face_recognition.compare_faces(stored_descriptors, live_descriptor, tolerance=threshold)
     distances = face_recognition.face_distance(stored_descriptors, live_descriptor)
     return results, distances.tolist()
