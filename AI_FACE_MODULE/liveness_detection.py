@@ -45,7 +45,7 @@ class LivenessDetector:
         Perform liveness check on a detected face in a frame.
 
         Args:
-            frame         : Full BGR frame from camera
+            frame         : Full RGB or BGR frame as np.ndarray
             face_location : Tuple (top, right, bottom, left) of face bounding box
 
         Returns:
@@ -57,9 +57,19 @@ class LivenessDetector:
         if face_crop.size == 0:
             return {"is_live": False, "score": 0.0, "message": "Invalid face crop."}
 
-        import cv2
-        gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
-        gray_resized = cv2.resize(gray, (64, 64))
+        # Convert to grayscale using luminosity weights (no cv2)
+        if face_crop.ndim == 3 and face_crop.shape[2] >= 3:
+            gray = (0.299 * face_crop[:, :, 0] +
+                    0.587 * face_crop[:, :, 1] +
+                    0.114 * face_crop[:, :, 2]).astype(np.uint8)
+        else:
+            gray = face_crop.astype(np.uint8)
+
+        # Resize to 64x64 using numpy (nearest-neighbour)
+        h, w = gray.shape
+        row_idx = (np.arange(64) * h / 64).astype(int)
+        col_idx = (np.arange(64) * w / 64).astype(int)
+        gray_resized = gray[np.ix_(row_idx, col_idx)]
 
         variance = cls.compute_lbp_variance(gray_resized)
         is_live = variance >= cls.LIVENESS_TEXTURE_THRESHOLD
@@ -74,16 +84,30 @@ class LivenessDetector:
     @staticmethod
     def check_blur(frame: np.ndarray) -> dict:
         """
-        Detect if a frame is blurry (Laplacian variance method).
+        Detect if a frame is blurry (Laplacian variance method, pure numpy).
         Very blurry frames may indicate a photo being held up.
         """
-        import cv2
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        variance = cv2.Laplacian(gray, cv2.CV_64F).var()
-        is_sharp = variance > 100.0
+        # Convert to grayscale with luminosity weights (no cv2)
+        if frame.ndim == 3 and frame.shape[2] >= 3:
+            gray = (0.299 * frame[:, :, 0] +
+                    0.587 * frame[:, :, 1] +
+                    0.114 * frame[:, :, 2])
+        else:
+            gray = frame.astype(float)
 
+        # 3x3 Laplacian kernel
+        kernel = np.array([[0,  1, 0],
+                           [1, -4, 1],
+                           [0,  1, 0]], dtype=float)
+        from numpy.lib.stride_tricks import sliding_window_view
+        padded = np.pad(gray, 1, mode='reflect')
+        windows = sliding_window_view(padded, (3, 3))
+        laplacian = (windows * kernel).sum(axis=(-2, -1))
+        variance = float(np.var(laplacian))
+
+        is_sharp = variance > 100.0
         return {
             "is_sharp": is_sharp,
-            "blur_score": round(float(variance), 2),
+            "blur_score": round(variance, 2),
             "message": "Image quality OK." if is_sharp else "Image too blurry. Please hold still.",
         }

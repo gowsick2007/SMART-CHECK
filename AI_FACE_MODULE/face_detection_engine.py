@@ -1,16 +1,17 @@
 # ============================================================
-# face_detection_engine.py — Face Detection with OpenCV & dlib
+# face_detection_engine.py — Face Detection with PIL & dlib
 # ============================================================
 
 import face_recognition
 import numpy as np
+from PIL import Image
 from typing import Optional
 
 
 class FaceDetectionEngine:
     """
     Handles face detection in images and video frames.
-    Uses OpenCV's HOG + face_recognition (dlib under the hood).
+    Uses PIL + face_recognition (dlib under the hood). No OpenCV required.
     """
 
     def __init__(self, model: str = "hog"):
@@ -27,8 +28,8 @@ class FaceDetectionEngine:
         Returns:
             List of face location tuples: (top, right, bottom, left)
         """
-        image = face_recognition.load_image_file(image_path)
-        locations = face_recognition.face_locations(image, model=self.model)
+        rgb = np.array(Image.open(image_path).convert("RGB"))
+        locations = face_recognition.face_locations(rgb, model=self.model)
         return locations
 
     def detect_faces_from_frame(self, frame: np.ndarray):
@@ -49,18 +50,13 @@ class FaceDetectionEngine:
     def draw_face_boxes(self, frame: np.ndarray, locations: list, color=(0, 255, 136), label: str = None):
         """
         Draw bounding boxes around detected faces on a frame.
+        NOTE: Server-side annotation is not used in production; returns frame unchanged.
 
         Returns:
-            Annotated frame (np.ndarray)
+            Original frame (np.ndarray) — no annotation without a display library.
         """
-        import cv2 # Lazy import to avoid libX11 error if unused
-        annotated = frame.copy()
-        for (top, right, bottom, left) in locations:
-            cv2.rectangle(annotated, (left, top), (right, bottom), color, 2)
-            if label:
-                cv2.putText(annotated, label, (left, top - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-        return annotated
+        # OpenCV removed — server-side drawing not required for headless operation.
+        return frame.copy()
 
     def has_face(self, image_path: str) -> bool:
         """Quick check: returns True if at least one face is detected."""
@@ -68,28 +64,10 @@ class FaceDetectionEngine:
 
     def capture_from_webcam(self, camera_index: int = 0, timeout_seconds: int = 10) -> Optional[np.ndarray]:
         """
-        Capture a single frame from the webcam that contains a face.
-
-        Returns:
-            np.ndarray frame or None if no face found within timeout
+        Webcam capture is handled by the browser (getUserMedia) in this system.
+        Server-side capture via OpenCV is not supported in the headless deployment.
         """
-        import cv2 # Lazy import to avoid libX11 error if unused
-        cap = cv2.VideoCapture(camera_index)
-        import time
-        start = time.time()
-
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            locations = self.detect_faces_from_frame(frame)
-            if locations:
-                cap.release()
-                return frame
-
-            if time.time() - start > timeout_seconds:
-                break
-
-        cap.release()
-        return None
+        raise NotImplementedError(
+            "Webcam capture is handled by the browser. "
+            "OpenCV VideoCapture has been removed from this server."
+        )

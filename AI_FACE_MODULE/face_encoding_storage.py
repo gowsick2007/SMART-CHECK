@@ -18,9 +18,10 @@ def encode_face_from_image(image_path: str) -> Optional[np.ndarray]:
     """
     import face_recognition
     import numpy as np
+    from PIL import Image
     try:
-        image = face_recognition.load_image_file(image_path)
-        encodings = face_recognition.face_encodings(image)
+        rgb = np.array(Image.open(image_path).convert("RGB"))
+        encodings = face_recognition.face_encodings(rgb)
         if not encodings:
             return None
         return encodings[0]  # Return the first detected face encoding
