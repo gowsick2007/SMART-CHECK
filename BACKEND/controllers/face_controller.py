@@ -99,62 +99,22 @@ def verify_face(current_student=None):
 
     # 3. Run Comparison
     result = FaceService.verify_face(student_id, descriptor)
-    
-    # 4. Final System Finalization Save
-    if result.get("matched"):
-        from DATABASE.connection.db_connection import get_connection, execute_query
-        import datetime
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        # Fetch existing partial data
-        cursor.execute("""
-            SELECT location_valid, fingerprint_verified 
-            FROM attendance 
-            WHERE student_id = %s AND date = CURRENT_DATE
-        """, (student_id,))
-        row = cursor.fetchone()
-        
-        is_inside = bool(row[0]) if row else False
-        fingerprint_verified = bool(row[1]) if row else False
 
-        # Fetch global fingerprint toggle
-        res_fp = execute_query("SELECT setting_value FROM system_config WHERE setting_key = 'fingerprint_verification_enabled'", fetch="one")
-        fp_on = (res_fp["setting_value"] == "ON") if res_fp else False
-        
-        # RULE: 
-        # If fingerprint OFF: face_match (True here) + inside_boundary = PRESENT
-        # If fingerprint ON: face_match (True here) + inside_boundary + fingerprint_verified = PRESENT
-        if fp_on:
-            success_mark = (is_inside and fingerprint_verified)
-        else:
-            success_mark = is_inside
-            
-        final_status = "present" if success_mark else "absent"
-        
-        # Commit final verification override
-        cursor.execute("""
-            UPDATE attendance 
-            SET status = %s, 
-                face_match_status = 'success',
-                remarks = %s,
-                marked_at = CURRENT_TIMESTAMP
-            WHERE student_id = %s AND date = CURRENT_DATE
-        """, (
-            final_status, 
-            "Auto Verified" if final_status == "present" else "Verification failed (Biometric or Boundary issue).",
-            student_id
-        ))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        
-        result["success"] = True 
-        result["status"] = final_status
+    # FIX 1 + FIX 3: The old UPDATE block that stamped face_match_status='success'
+    # on today's attendance row has been REMOVED.
+    # Reasons:
+    #   - It overwrote existing rows (violates INSERT-only rule).
+    #   - It set 'Matched' on ANY row for the student today, even if that row
+    #     was created before the actual face comparison ran — causing false
+    #     'Matched' entries in history.
+    # The canonical INSERT-only write path is store_auto_check() in attendance_model.py.
+
+    if result.get("matched"):
+        result["success"] = True
     else:
-         result["success"] = False
-         result["message"] = result.get("message", "Face match failed.")
-         
+        result["success"] = False
+        result["message"] = result.get("message", "Face match failed.")
+
     return jsonify(result), 200
 
 

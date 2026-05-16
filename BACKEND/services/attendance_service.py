@@ -28,15 +28,35 @@ class AttendanceService:
         today = get_current_date()
         now = get_current_time()
 
-        # Check if attendance already marked today
+        # FIX 4: 30-minute throttle for periodic/auto calls; strict one-per-day for manual.
         existing = AttendanceModel.get_by_student_and_date(student_id, today)
-        if existing and not is_periodic:
-            return {
-                "success": False,
-                "already_marked": True,
-                "message": f"Attendance already marked for today ({today}).",
-                "record": existing,
-            }
+        if existing:
+            if not is_periodic:
+                # Manual non-periodic call: block if any record exists today
+                return {
+                    "success": False,
+                    "already_marked": True,
+                    "message": f"Attendance already marked for today ({today}).",
+                    "record": existing,
+                }
+            else:
+                # Periodic auto call: enforce 30-minute gap from last system record
+                from datetime import datetime, timezone, timedelta
+                IST = timezone(timedelta(hours=5, minutes=30))
+                UTC = timezone.utc
+                now_tz = datetime.now(UTC)
+                last_time = existing.get("marked_at")
+                if last_time is not None:
+                    if last_time.tzinfo is None:
+                        last_time = last_time.replace(tzinfo=UTC)
+                    diff_mins = (now_tz - last_time).total_seconds() / 60
+                    if diff_mins < 30:
+                        return {
+                            "success": False,
+                            "blocked": "throttle",
+                            "next_check_mins": round(30 - diff_mins, 1),
+                            "message": f"Auto attendance throttled. Next allowed in {round(30 - diff_mins, 1)} min.",
+                        }
 
         # Check attendance window
         if not is_within_attendance_window():
@@ -59,7 +79,34 @@ class AttendanceService:
                 "message": f"You are {geo_result['distance_m']}m away. Must be within {geo_result['radius_m']}m of college.",
             }
 
-        # Step 2: Face recognition check
+        # Step 2: Face registration guard (FIX 1)
+        # MUST check face_enrolled AND descriptor before running comparison.
+        # Never call verify_face for an unregistered student.
+        from DATABASE.connection.db_connection import execute_query as _eq
+        face_row = _eq(
+            "SELECT face_enrolled, face_descriptor FROM students WHERE student_id = %s",
+            (student_id,), fetch="one"
+        )
+        face_enrolled_flag = bool(face_row.get('face_enrolled')) if face_row else False
+        face_has_descriptor = bool(face_row.get('face_descriptor')) if face_row else False
+
+        if not face_enrolled_flag or not face_has_descriptor:
+            # FIX 1: Face not registered — NEVER show Matched, always ABSENT
+            AttendanceModel.create(
+                student_id=student_id, date=today, time=now, status="absent",
+                latitude=latitude, longitude=longitude, location_valid=True,
+                face_match_status="not_registered",
+                remarks="Face not enrolled — attendance denied"
+            )
+            return {
+                "success": False,
+                "location_valid": True,
+                "face_matched": False,
+                "face_status": "not_registered",
+                "message": "Face not registered. Please enroll your face before marking attendance.",
+            }
+
+        # Step 3: Face recognition check
         face_result = FaceService.verify_face(student_id, live_descriptor)
         face_matched = face_result["matched"]
         face_confidence = face_result["confidence"]

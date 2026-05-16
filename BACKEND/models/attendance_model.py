@@ -69,11 +69,8 @@ class AttendanceModel:
         """
         return execute_query(query, (student_id,), fetch="one")
 
-    @staticmethod
-    def update_status(attendance_id, status):
-        """Update the status of an existing attendance record."""
-        query = "UPDATE attendance SET status = %s WHERE id = %s"
-        execute_insert(query, (status, attendance_id))
+    # FIX 3: update_status() REMOVED — all writes must be INSERT-only.
+    # Do NOT re-add an UPDATE here. To correct a record, INSERT a new row.
 
     @staticmethod
     def filter_by_date_range(student_id, start_date, end_date):
@@ -263,7 +260,10 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
             first_outside = cursor.fetchone()
             if first_outside:
                 grace_timer_started_at = first_outside['check_time']
-                elapsed = (now - grace_timer_started_at).total_seconds()
+                # FIX 2: DB value may be naive UTC; normalise to UTC-aware before diff
+                if grace_timer_started_at.tzinfo is None:
+                    grace_timer_started_at = grace_timer_started_at.replace(tzinfo=UTC)
+                elapsed = (now_utc - grace_timer_started_at).total_seconds()
                 grace_timer_passed = elapsed > 300  # 5 minutes
             else:
                 grace_timer_started_at = now
