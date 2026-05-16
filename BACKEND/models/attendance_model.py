@@ -150,109 +150,178 @@ class AttendanceModel:
 
 
 def store_auto_check(student_id, lat, lng, distance, status, face_verified=False):
+    """
+    Core auto-verification function.
+
+    Rules:
+    - 30-minute strict throttle per student (checked against auto_verify_log)
+    - 10-second anti-rapid filter
+    - INSIDE + face_enrolled=True + face_verified=True => PRESENT
+    - INSIDE + face not enrolled OR mismatch => ABSENT, face_status='not_registered'/'failed'
+    - OUTSIDE => start 5-min grace timer
+    - Still OUTSIDE after 5 min => ABSENT
+    - Every valid 30-min check inserts NEW record into BOTH:
+        attendance (student history)
+        auto_verify_log (admin panel)
+    """
     from DATABASE.connection.db_connection import get_connection
-    from datetime import datetime, timedelta
+    from datetime import datetime
     try:
         conn = get_connection()
         import psycopg2.extras
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        # 30m Periodic Logging + 5m Grace Period Implementation
+
         now = datetime.now()
         current_date = now.date()
+
         from CONFIG.college_location_config import RADIUS
-        # Buffer the radius slightly (15m) to account for mobile GPS drift
-        ALLOWED_RADIUS = RADIUS + 15 
+        # 15m tolerance for mobile GPS drift
+        ALLOWED_RADIUS = RADIUS + 15
         is_inside = distance <= ALLOWED_RADIUS
         gps_status = 'inside' if is_inside else 'outside'
 
-        # Fetch latest record for status comparison
+        # ── Step 1: Check face enrollment status from students table ──────────
+        cursor.execute(
+            "SELECT face_enrolled FROM students WHERE student_id = %s",
+            (student_id,)
+        )
+        student_row = cursor.fetchone()
+        face_enrolled = bool(student_row.get('face_enrolled')) if student_row else False
+
+        # Resolve face status label for auto_verify_log
+        if not face_enrolled:
+            face_status_label = 'not_registered'
+            face_verified = False          # force False — cannot verify unregistered face
+        elif face_verified:
+            face_status_label = 'verified'
+        else:
+            face_status_label = 'failed'
+
+        # ── Step 2: Determine final status ────────────────────────────────────
+        # PRESENT only if: INSIDE + face enrolled + face matched
+        current_status = 'present' if (is_inside and face_enrolled and face_verified) else 'absent'
+
+        # ── Step 3: 30-min throttle — check auto_verify_log (NOT attendance) ──
         cursor.execute("""
-            SELECT status, location_valid, marked_at, grace_timer_started_at 
-            FROM attendance 
-            WHERE student_id = %s AND date = %s AND recorded_by_role = 'system'
-            ORDER BY marked_at DESC LIMIT 1
-        """, (student_id, current_date))
-        prev = cursor.fetchone()
-        
-        # Determine status for this check
-        # Requirement: If INSIDE + face matched -> PRESENT
-        # If OUTSIDE -> start 5 min grace. If still OUTSIDE after 5 min -> ABSENT.
-        current_status = 'present' if (is_inside and face_verified) else 'absent'
-        
-        # Calculate Grace Timer
-        timer_start = None
-        timer_passed = False
-        if not is_inside:
-            if prev and prev.get('grace_timer_started_at'):
-                timer_start = prev['grace_timer_started_at']
-            else:
-                timer_start = now
-            
-            elapsed = (now - timer_start).total_seconds()
-            if elapsed > 300: # 5 mins
-                timer_passed = True
-        
-        # THROTTLE & TRIGGER LOGIC
-        # 1. Periodic: Every 30 mins
-        # 2. Reactive: If status changed (e.g. Outside -> Inside or vice versa)
-        should_insert = True
-        if prev:
-            diff_secs = (now - prev['marked_at']).total_seconds()
-            if diff_secs < 10: # Strict anti-rapid filter (10 seconds)
-                return {"success": True, "status": prev['status'], "is_inside": is_inside, "inserted": False}
+            SELECT check_time, final_status, gps_status
+            FROM auto_verify_log
+            WHERE student_id = %s
+            ORDER BY check_time DESC LIMIT 1
+        """, (student_id,))
+        last_log = cursor.fetchone()
+
+        if last_log:
+            diff_secs = (now - last_log['check_time']).total_seconds()
+
+            # Anti-rapid filter: block if < 10 seconds since last insert
+            if diff_secs < 10:
+                cursor.close()
+                conn.close()
+                return {
+                    "success": True,
+                    "status": last_log['final_status'],
+                    "is_inside": is_inside,
+                    "inserted": False,
+                    "blocked": "rapid"
+                }
 
             diff_mins = diff_secs / 60
-            # Condition 1: Every 30 mins regardless of status
-            # Condition 2: If status changes (Outside -> Inside), insert immediately
-            if current_status == prev['status'] and diff_mins < 30:
-                should_insert = False
-            
-            # If they just came inside, we MUST mark them present immediately
-            if is_inside and prev['status'] == 'absent' and not prev['location_valid']:
-                should_insert = True
 
-        if should_insert:
-            # Insert into auto_verify_log for Admin Auto Verification page
-            # Requirement 8: Admin Auto Verification page must show every auto-verify result.
+            # Standard 30-min block: same status within 30 mins => skip
+            if diff_mins < 30:
+                # Exception: student just moved INSIDE from OUTSIDE → insert immediately
+                was_outside = (last_log['gps_status'] == 'outside')
+                just_came_inside = is_inside and was_outside
+                if not just_came_inside:
+                    cursor.close()
+                    conn.close()
+                    return {
+                        "success": True,
+                        "status": last_log['final_status'],
+                        "is_inside": is_inside,
+                        "inserted": False,
+                        "blocked": "throttle",
+                        "next_check_mins": round(30 - diff_mins, 1)
+                    }
+
+        # ── Step 4: Grace period for OUTSIDE ──────────────────────────────────
+        grace_timer_started_at = None
+        grace_timer_passed = False
+        if not is_inside:
+            # Fetch earliest outside entry today for grace calculation
             cursor.execute("""
-                INSERT INTO auto_verify_log 
-                (student_id, latitude, longitude, distance_meters, gps_status, face_status, final_status, check_time)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-            """, (student_id, lat, lng, distance, gps_status, ('verified' if face_verified else 'failed'), current_status))
+                SELECT check_time FROM auto_verify_log
+                WHERE student_id = %s
+                  AND DATE(check_time) = %s
+                  AND gps_status = 'outside'
+                ORDER BY check_time ASC LIMIT 1
+            """, (student_id, current_date))
+            first_outside = cursor.fetchone()
+            if first_outside:
+                grace_timer_started_at = first_outside['check_time']
+                elapsed = (now - grace_timer_started_at).total_seconds()
+                grace_timer_passed = elapsed > 300  # 5 minutes
+            else:
+                grace_timer_started_at = now
+                grace_timer_passed = False
 
-            # Insert into attendance for Student History
-            # Requirement 7: Student History must show every auto-verify result.
-            # Requirement 2: Do not overwrite old records.
-            location_valid_bool = True if is_inside else False
-            face_match_status = 'success' if face_verified else 'failed'
-            dist_suffix = "INSIDE" if is_inside else "OUTSIDE"
-            grace_suffix = " (Grace Period)" if (not is_inside and not timer_passed) else ""
-            remarks = f"{distance:.1f}m {dist_suffix}{grace_suffix}"
+        # ── Step 5: Build remarks ─────────────────────────────────────────────
+        dist_suffix = "INSIDE" if is_inside else "OUTSIDE"
+        grace_suffix = ""
+        if not is_inside:
+            if grace_timer_passed:
+                grace_suffix = " (Grace Expired → ABSENT)"
+            else:
+                grace_suffix = " (Grace Period Active)"
+        if not face_enrolled:
+            face_suffix = " | Face: NOT REGISTERED"
+        elif not face_verified:
+            face_suffix = " | Face: MISMATCH"
+        else:
+            face_suffix = " | Face: MATCHED"
+        remarks = f"{distance:.1f}m {dist_suffix}{grace_suffix}{face_suffix}"
 
-            cursor.execute("""
-                INSERT INTO attendance
-                    (student_id, date, time, status, latitude, longitude,
-                     location_valid, face_match_status, remarks, recorded_by_role,
-                     grace_timer_started_at, grace_timer_passed, marked_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'system', %s, %s, CURRENT_TIMESTAMP)
-            """, (
-                student_id, current_date, now.strftime("%H:%M:%S"), current_status, 
-                lat, lng, location_valid_bool, face_match_status, remarks,
-                timer_start, timer_passed
-            ))
-        
+        # ── Step 6: Insert into auto_verify_log (admin panel) ─────────────────
+        cursor.execute("""
+            INSERT INTO auto_verify_log
+            (student_id, latitude, longitude, distance_meters, gps_status,
+             face_status, final_status, check_time)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+        """, (
+            student_id, lat, lng, distance,
+            gps_status, face_status_label, current_status
+        ))
+
+        # ── Step 7: Insert into attendance (student history) ──────────────────
+        face_match_col = 'success' if face_verified else 'failed'
+        cursor.execute("""
+            INSERT INTO attendance
+                (student_id, date, time, status, latitude, longitude,
+                 location_valid, face_match_status, remarks, recorded_by_role,
+                 grace_timer_started_at, grace_timer_passed, marked_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'system', %s, %s, CURRENT_TIMESTAMP)
+        """, (
+            student_id, current_date, now.strftime("%H:%M:%S"),
+            current_status, lat, lng,
+            bool(is_inside), face_match_col, remarks,
+            grace_timer_started_at, grace_timer_passed
+        ))
+
         conn.commit()
         cursor.close()
         conn.close()
-        
+
         return {
             "success": True,
             "status": current_status,
             "is_inside": is_inside,
-            "grace_timer_passed": timer_passed,
-            "inserted": should_insert
+            "face_enrolled": face_enrolled,
+            "face_status": face_status_label,
+            "grace_timer_passed": grace_timer_passed,
+            "inserted": True
         }
+
     except Exception as e:
-        print(f"Database Error in store_auto_check: {e}")
+        print(f"[store_auto_check] DB Error: {e}")
+        import traceback; traceback.print_exc()
         return {"success": False, "status": "error", "grace_time_remaining": 0}

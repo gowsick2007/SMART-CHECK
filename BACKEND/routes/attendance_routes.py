@@ -32,40 +32,55 @@ def auto_verify_check():
     student_id = data.get('student_id')
     lat = data.get('latitude')
     lng = data.get('longitude')
-    face_verified = data.get('face_verified', False)
+    face_verified_client = data.get('face_verified', False)  # from frontend
+
+    # ── Fetch boundary coordinates (DB first, config fallback) ───────────────
     from DATABASE.connection.db_connection import execute_query
-    res_loc = execute_query("SELECT latitude, longitude FROM boundary_locations ORDER BY updated_time DESC LIMIT 1", fetch="one")
+    res_loc = execute_query(
+        "SELECT latitude, longitude FROM boundary_locations ORDER BY updated_time DESC LIMIT 1",
+        fetch="one"
+    )
     if res_loc:
         COLLEGE_LAT = float(res_loc["latitude"])
         COLLEGE_LNG = float(res_loc["longitude"])
     else:
         from CONFIG.college_location_config import COLLEGE_LAT, COLLEGE_LNG
-    
+
     from CONFIG.college_location_config import RADIUS
     from BACKEND.services.geofence_service import calculate_distance
     distance = calculate_distance(lat, lng, COLLEGE_LAT, COLLEGE_LNG)
 
-    from CONFIG.college_location_config import RADIUS
-    # Requirement: 15m tolerance for reliability (Total 65m)
-    ALLOWED_RADIUS = RADIUS + 15
+    ALLOWED_RADIUS = RADIUS + 15  # 15m tolerance for GPS drift
     is_inside = distance <= ALLOWED_RADIUS
-    
-    print(f"[GPS] Student: {lat},{lng} | College: {COLLEGE_LAT},{COLLEGE_LNG} | Dist: {distance:.1f}m | Result: {'INSIDE' if is_inside else 'OUTSIDE'}")
 
-    # Check if face is needed and verified
-    # STRICT RULE: Auto-verify ONLY marks present if face is verified AND inside boundary
-    status = 'present' if (is_inside and face_verified) else 'absent'
+    print(f"[GPS] Student:{student_id} {lat},{lng} | College:{COLLEGE_LAT},{COLLEGE_LNG} | "
+          f"Dist:{distance:.1f}m | {'INSIDE' if is_inside else 'OUTSIDE'}")
 
+    # ── Validate face_enrolled in DB — never trust frontend alone ─────────────
+    face_row = execute_query(
+        "SELECT face_enrolled FROM students WHERE student_id = %s",
+        (student_id,), fetch="one"
+    )
+    face_enrolled = bool(face_row.get('face_enrolled')) if face_row else False
+
+    # Frontend may send face_verified=True but face was never enrolled
+    face_verified = face_verified_client and face_enrolled
+
+    # ── Delegate to canonical throttled store_auto_check ─────────────────────
     from BACKEND.models.attendance_model import store_auto_check
-    result = store_auto_check(student_id, lat, lng, distance, status, face_verified=face_verified)
-    
+    result = store_auto_check(student_id, lat, lng, distance, status=None, face_verified=face_verified)
+
     return jsonify({
-        "success": result.get("success", True), 
-        "status": result.get("status", status), 
-        "distance": round(distance, 1), 
+        "success": result.get("success", True),
+        "status": result.get("status", "absent"),
+        "distance": round(distance, 1),
         "face_verified": face_verified,
+        "face_enrolled": face_enrolled,
+        "face_status": result.get("face_status", "not_registered" if not face_enrolled else "failed"),
         "is_inside": is_inside,
-        "grace_time_remaining": result.get("grace_time_remaining", 0),
+        "inserted": result.get("inserted", False),
+        "blocked": result.get("blocked"),
+        "next_check_mins": result.get("next_check_mins"),
         "grace_timer_passed": result.get("grace_timer_passed", False)
     })
 
