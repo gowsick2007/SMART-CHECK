@@ -6,11 +6,13 @@ from flask import request, jsonify
 from DATABASE.connection.db_connection import execute_query, execute_insert
 from datetime import datetime
 import functools
+import pytz
 
 ADMIN_TOKEN = "smart-attendance-admin-2026"
+IST = pytz.timezone('Asia/Kolkata')
 
 def get_current_date():
-    return datetime.now().date()
+    return datetime.now(IST).date()
 
 def require_admin(f):
     @functools.wraps(f)
@@ -156,7 +158,7 @@ def mark_attendance():
     if not student_id:
         return jsonify({"success": False, "message": "Student ID required"}), 400
         
-    now = datetime.now()
+    now = datetime.now(IST)
     
     # Enforce dynamic identification of administrator committing current mark
     current_admin_name = "Admin"

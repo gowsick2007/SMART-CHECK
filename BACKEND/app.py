@@ -975,6 +975,8 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         from DATABASE.connection.db_connection import execute_query, execute_insert
         from flask import request
         from datetime import datetime, date, time, timedelta
+        import pytz
+        IST = pytz.timezone('Asia/Kolkata')
         
         data = request.get_json() or {}
         student_id = data.get("student_id")
@@ -987,7 +989,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         if not student_id:
             return jsonify({"success": False, "message": "student_id required"}), 400
 
-        now = datetime.now()
+        now = datetime.now(IST)
         
         # ── 45-minute Manual Update Lock ──
         existing_rec = execute_query("""
@@ -1018,14 +1020,10 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         remarks = "Attendance manually updated"
         
         execute_insert("""
-            INSERT INTO attendance (student_id, date, time, status, recorded_by_role, remarks, marked_by_name, face_match_status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, 'not_attempted')
-            ON CONFLICT (student_id, date, recorded_by_role) DO UPDATE SET
-                status = EXCLUDED.status,
-                remarks = EXCLUDED.remarks,
-                marked_by_name = EXCLUDED.marked_by_name,
-                face_match_status = 'not_attempted',
-                marked_at = CURRENT_TIMESTAMP
+            INSERT INTO attendance
+                (student_id, date, time, status, recorded_by_role, remarks, marked_by_name,
+                 face_match_status, marked_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 'not_attempted', CURRENT_TIMESTAMP)
         """, (
             student_id, now.date(), now.strftime("%H:%M:%S"),
             status, marked_by,
@@ -1056,7 +1054,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             return jsonify({"success": False, "message": f"User not found: {username}"}), 404
         
         sid = user["student_id"]
-        now = datetime.now()
+        now = datetime.now(IST)
         
         # ── 45-minute Manual Update Lock ──
         existing_rec = execute_query("""
@@ -1087,14 +1085,10 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         remarks = 'Attendance manually updated'
         
         execute_insert("""
-            INSERT INTO attendance (student_id, date, time, status, recorded_by_role, remarks, marked_by_name, face_match_status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, 'not_attempted')
-            ON CONFLICT (student_id, date, recorded_by_role) DO UPDATE SET
-                status = EXCLUDED.status,
-                remarks = EXCLUDED.remarks,
-                marked_by_name = EXCLUDED.marked_by_name,
-                face_match_status = 'not_attempted',
-                marked_at = CURRENT_TIMESTAMP
+            INSERT INTO attendance
+                (student_id, date, time, status, recorded_by_role, remarks, marked_by_name,
+                 face_match_status, marked_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 'not_attempted', CURRENT_TIMESTAMP)
         """, (
             sid, now.date(), now.strftime("%H:%M:%S"),
             status, marked_by,

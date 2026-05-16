@@ -11,22 +11,13 @@ class AttendanceModel:
     @staticmethod
     def create(student_id, date, time, status, latitude, longitude,
                location_valid, face_match_status, face_confidence=None, remarks=None):
-        """Insert or update an attendance record (UPSERT)."""
+        """Insert a new attendance history record. Always INSERT — never overwrite."""
         query = """
             INSERT INTO attendance
                 (student_id, date, time, status, latitude, longitude,
-                 location_valid, face_match_status, face_confidence, remarks, recorded_by_role)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'system')
-            ON CONFLICT (student_id, date, recorded_by_role) DO UPDATE SET
-                time = EXCLUDED.time,
-                status = EXCLUDED.status,
-                latitude = EXCLUDED.latitude,
-                longitude = EXCLUDED.longitude,
-                location_valid = EXCLUDED.location_valid,
-                face_match_status = EXCLUDED.face_match_status,
-                face_confidence = EXCLUDED.face_confidence,
-                remarks = EXCLUDED.remarks,
-                marked_at = CURRENT_TIMESTAMP
+                 location_valid, face_match_status, face_confidence, remarks, recorded_by_role,
+                 marked_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'system', CURRENT_TIMESTAMP)
             RETURNING id
         """
         location_val_bool = bool(location_valid)
@@ -166,12 +157,14 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
     """
     from DATABASE.connection.db_connection import get_connection
     from datetime import datetime
+    import pytz
+    IST = pytz.timezone('Asia/Kolkata')
     try:
         conn = get_connection()
         import psycopg2.extras
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        now = datetime.now()
+        now = datetime.now(IST)
         current_date = now.date()
 
         from CONFIG.college_location_config import RADIUS
