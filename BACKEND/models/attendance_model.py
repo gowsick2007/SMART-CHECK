@@ -198,7 +198,11 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
         # 2. Reactive: If status changed (e.g. Outside -> Inside or vice versa)
         should_insert = True
         if prev:
-            diff_mins = (now - prev['marked_at']).total_seconds() / 60
+            diff_secs = (now - prev['marked_at']).total_seconds()
+            if diff_secs < 10: # Strict anti-rapid filter (10 seconds)
+                return {"success": True, "status": prev['status'], "is_inside": is_inside, "inserted": False}
+
+            diff_mins = diff_secs / 60
             # Condition 1: Every 30 mins regardless of status
             # Condition 2: If status changes (Outside -> Inside), insert immediately
             if current_status == prev['status'] and diff_mins < 30:

@@ -17,7 +17,6 @@ def compute_face_distance(stored_descriptor: np.ndarray, live_descriptor: np.nda
     Returns:
         Distance as float. Lower = more similar. Typically < 0.5 = same person.
     """
-    import numpy as np
     return float(np.linalg.norm(stored_descriptor - live_descriptor))
 
 
@@ -49,7 +48,6 @@ def find_best_match(live_descriptor: np.ndarray, candidates: List[dict], thresho
     """
     best_distance = float("inf")
     best_student_id = None
-    import numpy as np
 
     for candidate in candidates:
         stored = np.array(candidate["face_descriptor"])
