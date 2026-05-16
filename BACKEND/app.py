@@ -1002,11 +1002,13 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             if isinstance(last_at, str):
                 try: last_at = datetime.fromisoformat(last_at)
                 except: pass
-            
+            # FIX: DB returns naive datetime; normalise to UTC-aware before subtracting
+            if hasattr(last_at, 'tzinfo') and last_at.tzinfo is None:
+                last_at = last_at.replace(tzinfo=timezone.utc)
             diff_mins = (now - last_at).total_seconds() / 60
             if diff_mins < 45:
                 return jsonify({
-                    "success": False, 
+                    "success": False,
                     "message": "Manual attendance can be updated again after 45 minutes."
                 }), 403
 
@@ -1068,11 +1070,13 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             if isinstance(last_at, str):
                 try: last_at = datetime.fromisoformat(last_at)
                 except: pass
-            
+            # FIX: DB returns naive datetime; normalise to UTC-aware before subtracting
+            if hasattr(last_at, 'tzinfo') and last_at.tzinfo is None:
+                last_at = last_at.replace(tzinfo=timezone.utc)
             diff_mins = (now - last_at).total_seconds() / 60
             if diff_mins < 45:
                 return jsonify({
-                    "success": False, 
+                    "success": False,
                     "message": "Manual attendance can be updated again after 45 minutes."
                 }), 403
 
