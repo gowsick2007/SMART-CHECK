@@ -2,7 +2,6 @@
 # liveness_detection.py — Anti-Spoofing / Liveness Check
 # ============================================================
 
-import cv2
 import numpy as np
 from typing import Optional
 
@@ -58,6 +57,7 @@ class LivenessDetector:
         if face_crop.size == 0:
             return {"is_live": False, "score": 0.0, "message": "Invalid face crop."}
 
+        import cv2
         gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
         gray_resized = cv2.resize(gray, (64, 64))
 
@@ -77,6 +77,7 @@ class LivenessDetector:
         Detect if a frame is blurry (Laplacian variance method).
         Very blurry frames may indicate a photo being held up.
         """
+        import cv2
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         variance = cv2.Laplacian(gray, cv2.CV_64F).var()
         is_sharp = variance > 100.0

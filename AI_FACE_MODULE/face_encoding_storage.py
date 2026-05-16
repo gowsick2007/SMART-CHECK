@@ -4,7 +4,6 @@
 
 import face_recognition
 import numpy as np
-import cv2
 from typing import Optional
 
 
@@ -40,7 +39,8 @@ def encode_face_from_frame(frame: np.ndarray) -> Optional[np.ndarray]:
         128-d numpy array or None
     """
     try:
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # Convert BGR to RGB using numpy slicing (no cv2 needed)
+        rgb = frame[:, :, ::-1]
         encodings = face_recognition.face_encodings(rgb)
         if not encodings:
             return None

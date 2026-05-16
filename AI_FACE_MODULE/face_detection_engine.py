@@ -2,7 +2,6 @@
 # face_detection_engine.py — Face Detection with OpenCV & dlib
 # ============================================================
 
-import cv2
 import face_recognition
 import numpy as np
 from typing import Optional
@@ -42,7 +41,8 @@ class FaceDetectionEngine:
         Returns:
             List of face location tuples
         """
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # Convert BGR to RGB using numpy (no cv2 dependency)
+        rgb_frame = frame[:, :, ::-1]
         locations = face_recognition.face_locations(rgb_frame, model=self.model)
         return locations
 
@@ -53,6 +53,7 @@ class FaceDetectionEngine:
         Returns:
             Annotated frame (np.ndarray)
         """
+        import cv2 # Lazy import to avoid libX11 error if unused
         annotated = frame.copy()
         for (top, right, bottom, left) in locations:
             cv2.rectangle(annotated, (left, top), (right, bottom), color, 2)
@@ -72,6 +73,7 @@ class FaceDetectionEngine:
         Returns:
             np.ndarray frame or None if no face found within timeout
         """
+        import cv2 # Lazy import to avoid libX11 error if unused
         cap = cv2.VideoCapture(camera_index)
         import time
         start = time.time()
