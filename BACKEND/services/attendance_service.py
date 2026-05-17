@@ -147,8 +147,8 @@ class AttendanceService:
         }
 
     @staticmethod
-    def get_history(student_id: str, limit: int = 30):
-        """Fetch attendance history for a student."""
+    def get_history(student_id: str, limit: int = 50):
+        """Fetch combined attendance history (attendance + auto_verify_log) for a student."""
         return AttendanceModel.get_by_student(student_id, limit=limit)
 
     @staticmethod

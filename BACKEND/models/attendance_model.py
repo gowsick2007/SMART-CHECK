@@ -27,15 +27,55 @@ class AttendanceModel:
         ))
 
     @staticmethod
-    def get_by_student(student_id, limit=30):
-        """Fetch recent attendance records for a student."""
+    def get_by_student(student_id, limit=50):
+        """
+        Fetch combined history: attendance records (manual + daily summary)
+        UNION auto_verify_log (every 30-min auto-verify event).
+        Ordered by timestamp DESC so the most recent event appears first.
+        """
         query = """
-            SELECT * FROM attendance
+            SELECT
+                date,
+                time,
+                status,
+                latitude,
+                longitude,
+                location_valid,
+                face_match_status,
+                NULL        AS face_confidence,
+                remarks,
+                recorded_by_role,
+                NULL        AS marked_by_name,
+                marked_at
+            FROM attendance
             WHERE student_id = %s
+
+            UNION ALL
+
+            SELECT
+                DATE(check_time)        AS date,
+                check_time::time        AS time,
+                final_status            AS status,
+                latitude,
+                longitude,
+                (gps_status = 'inside') AS location_valid,
+                face_status             AS face_match_status,
+                NULL                    AS face_confidence,
+                CONCAT(
+                    ROUND(distance_meters::numeric, 1)::text, 'm ',
+                    gps_status,
+                    ' | Face: ', face_status
+                )                       AS remarks,
+                'system'                AS recorded_by_role,
+                NULL                    AS marked_by_name,
+                check_time              AS marked_at
+            FROM auto_verify_log
+            WHERE student_id = %s
+
             ORDER BY marked_at DESC
             LIMIT %s
         """
-        return execute_query(query, (student_id, limit), fetch="all")
+        return execute_query(query, (student_id, student_id, limit), fetch="all")
 
     @staticmethod
     def get_by_student_and_date(student_id, date):
@@ -296,7 +336,10 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
             gps_status, face_status_label, current_status
         ))
 
-        # ── Step 7: Insert into attendance (student history) ──────────────────
+        # ── Step 7: Daily summary row in attendance (one per student per day) ────
+        # auto_verify_log (Step 6) is the INSERT-only event history — new row every 30 min.
+        # attendance is the daily summary — only the FIRST write per (student, date, role) lands.
+        # ON CONFLICT DO NOTHING: never crash, never overwrite existing rows.
         face_match_col = 'success' if face_verified else 'failed'
         cursor.execute("""
             INSERT INTO attendance
@@ -304,12 +347,14 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
                  location_valid, face_match_status, remarks, recorded_by_role,
                  grace_timer_started_at, grace_timer_passed, marked_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'system', %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (student_id, date, recorded_by_role) DO NOTHING
         """, (
             student_id, current_date, now.strftime("%H:%M:%S"),
             current_status, lat, lng,
             bool(is_inside), face_match_col, remarks,
             grace_timer_started_at, grace_timer_passed
         ))
+
 
         conn.commit()
         cursor.close()
