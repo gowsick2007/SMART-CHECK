@@ -111,9 +111,22 @@ function updateGeofenceUI() {
         console.log("BOUNDARY:", data.is_inside ? "INSIDE" : "OUTSIDE");
 
         renderGeofenceStatus(data.is_inside, data.distance);
-        
-        // Start / Update Grace Timer Display
-        updateGraceTimerUI(data.grace_time_remaining, data.is_inside);
+
+        // Grace timer: backend does not return seconds remaining directly.
+        // Compute from localStorage timestamp of when outside state started.
+        if (!data.is_inside) {
+            const outsideStart = parseInt(localStorage.getItem('outside_start_ts') || 0);
+            const now = Date.now();
+            if (!outsideStart) {
+                localStorage.setItem('outside_start_ts', now);
+            }
+            const elapsed = Math.floor((now - (outsideStart || now)) / 1000);
+            const remaining = Math.max(0, 300 - elapsed); // 5-min grace
+            updateGraceTimerUI(remaining, false);
+        } else {
+            localStorage.removeItem('outside_start_ts');
+            updateGraceTimerUI(0, true);
+        }
     });
 }
 
@@ -194,7 +207,8 @@ function renderGeofenceStatus(isInside, distance = 0) {
     const distText = document.getElementById('boundary-distance');
     const glow = document.getElementById('boundary-glow');
 
-    distText.textContent = `${distance.toFixed(1)}m`;
+    const safeDistance = (typeof distance === 'number' && isFinite(distance)) ? distance : 0;
+    distText.textContent = `${safeDistance.toFixed(1)}m`;
 
     if (isInside) {
         card.style.borderColor = "rgba(0, 255, 204, 0.3)";

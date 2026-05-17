@@ -71,11 +71,16 @@ async function startScan() {
     try {
         const video = document.getElementById('camera-preview');
         const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        // Use actual video pixel dimensions
+        canvas.width  = video.videoWidth  || 640;
+        canvas.height = video.videoHeight || 480;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0);
-        const imageData = canvas.toDataURL('image/jpeg');
+        // Flip horizontally to correct DroidCam/selfie mirror effect.
+        // face_recognition needs a geometrically correct (unmirrored) face.
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.95);
 
         const user = JSON.parse(localStorage.getItem('sat_student') || '{}');
         const token = localStorage.getItem('sat_token');
