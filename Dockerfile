@@ -22,4 +22,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD gunicorn BACKEND.app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+CMD gunicorn BACKEND.app:app --bind 0.0.0.0:${PORT:-8080} --workers 1 --timeout 120
