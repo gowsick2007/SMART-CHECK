@@ -53,8 +53,8 @@ class AttendanceModel:
             UNION ALL
 
             SELECT
-                DATE(v.check_time)        AS date,
-                v.check_time::time        AS time,
+                DATE(v.check_time AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')  AS date,
+                DATE_TRUNC('second', v.check_time AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::time AS time,
                 v.final_status            AS status,
                 v.latitude,
                 v.longitude,
