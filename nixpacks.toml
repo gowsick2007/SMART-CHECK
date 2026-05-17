@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["libX11"]
+nixPkgs = ["xorg.libX11"]
 
 [phases.build]
 cmds = [

@@ -53,24 +53,37 @@ class AttendanceModel:
             UNION ALL
 
             SELECT
-                DATE(check_time)        AS date,
-                check_time::time        AS time,
-                final_status            AS status,
-                latitude,
-                longitude,
-                (gps_status = 'inside') AS location_valid,
-                face_status             AS face_match_status,
-                NULL                    AS face_confidence,
+                DATE(v.check_time)        AS date,
+                v.check_time::time        AS time,
+                v.final_status            AS status,
+                v.latitude,
+                v.longitude,
+                (v.gps_status = 'inside') AS location_valid,
+                v.face_status             AS face_match_status,
+                NULL                      AS face_confidence,
                 CONCAT(
-                    ROUND(distance_meters::numeric, 1)::text, 'm ',
-                    gps_status,
-                    ' | Face: ', face_status
-                )                       AS remarks,
-                'system'                AS recorded_by_role,
-                NULL                    AS marked_by_name,
-                check_time              AS marked_at
-            FROM auto_verify_log
-            WHERE student_id = %s
+                    ROUND(v.distance_meters::numeric, 1)::text, 'm ',
+                    v.gps_status,
+                    ' | Face: ', v.face_status
+                )                         AS remarks,
+                'system'                  AS recorded_by_role,
+                NULL                      AS marked_by_name,
+                v.check_time              AS marked_at
+            FROM (
+                SELECT DISTINCT ON (
+                    DATE(check_time),
+                    (EXTRACT(HOUR FROM check_time)::int * 2
+                     + FLOOR(EXTRACT(MINUTE FROM check_time) / 30))::int
+                )
+                    *
+                FROM auto_verify_log
+                WHERE student_id = %s
+                ORDER BY
+                    DATE(check_time) DESC,
+                    (EXTRACT(HOUR FROM check_time)::int * 2
+                     + FLOOR(EXTRACT(MINUTE FROM check_time) / 30))::int DESC,
+                    check_time DESC
+            ) v
 
             ORDER BY marked_at DESC
             LIMIT %s
