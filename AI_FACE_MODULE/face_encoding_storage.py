@@ -3,6 +3,7 @@
 # ============================================================
 
 import numpy as np
+import traceback
 from typing import Optional
 
 
@@ -26,6 +27,7 @@ def encode_face_from_image(image_path: str) -> Optional[np.ndarray]:
             return None
         return encodings[0]  # Return the first detected face encoding
     except Exception as e:
+        traceback.print_exc()
         print(f"[FaceEncoding] Error encoding image {image_path}: {e}")
         return None
 
@@ -50,6 +52,7 @@ def encode_face_from_frame(frame: np.ndarray) -> Optional[np.ndarray]:
             return None
         return encodings[0]
     except Exception as e:
+        traceback.print_exc()
         print(f"[FaceEncoding] Error encoding frame: {e}")
         return None
 
@@ -77,5 +80,6 @@ def encode_face_from_base64(base64_bytes: bytes) -> Optional[np.ndarray]:
             return None
         return encodings[0]
     except Exception as e:
+        traceback.print_exc()
         print(f"[FaceEncoding] Error encoding base64 image: {e}")
         return None

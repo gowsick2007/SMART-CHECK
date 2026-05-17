@@ -4,6 +4,7 @@
 
 import os
 import base64
+import traceback
 from flask import request, jsonify, current_app
 from BACKEND.services.face_service import FaceService
 from BACKEND.middleware.auth_middleware import require_auth
@@ -27,8 +28,9 @@ def enroll_face(current_student=None):
         if "," in image_b64:
             image_b64 = image_b64.split(",", 1)[1]
         image_bytes = base64.b64decode(image_b64)
-    except Exception:
-        return jsonify({"success": False, "message": "Invalid image data."}), 400
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "message": f"Invalid image data: {e}"}), 400
 
     upload_dir = current_app.config.get("UPLOAD_FOLDER", "uploads/faces")
     os.makedirs(upload_dir, exist_ok=True)
@@ -75,6 +77,7 @@ def verify_face(current_student=None):
                  return jsonify({"success": False, "message": "No recognizable face detected in camera frame."}), 400
             descriptor = extracted.tolist()
         except Exception as e:
+            traceback.print_exc()
             return jsonify({"success": False, "message": f"Image processing error: {str(e)}"}), 400
 
     if not descriptor or len(descriptor) != 128:

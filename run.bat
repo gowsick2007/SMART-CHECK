@@ -21,6 +21,8 @@ if exist "venv\Scripts\activate.bat" (
 
 echo.
 echo [*] Working directory : %cd%
+echo [*] Removing cached OpenCV (libX11 source)...
+pip uninstall -y opencv-python opencv-contrib-python opencv-python-headless 2>nul
 echo [*] Starting server   : http://127.0.0.1:5000
 echo.
 
