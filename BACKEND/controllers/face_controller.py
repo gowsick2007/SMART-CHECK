@@ -57,10 +57,27 @@ def verify_face(current_student=None):
     if not student_id:
         return jsonify({"success": False, "message": "Authentication required."}), 401
         
+    # 1. Guard: verify face_enrolled AND descriptor exists in DB before doing any heavy processing
+    from DATABASE.connection.db_connection import execute_query as _eq
+    face_row = _eq(
+        "SELECT face_enrolled, face_descriptor FROM students WHERE student_id = %s",
+        (student_id,), fetch="one"
+    )
+    face_enrolled = bool(face_row.get('face_enrolled')) if face_row else False
+    face_has_descriptor = bool(face_row.get('face_descriptor')) if face_row else False
+
+    if not face_enrolled or not face_has_descriptor:
+        return jsonify({
+            "success": False,
+            "matched": False,
+            "face_status": "not_registered",
+            "message": "Face not registered. Please enroll your face first."
+        }), 400
+
     descriptor = data.get("face_descriptor")
     image_data = data.get("image") or data.get("image_base64")
     
-    # 1. Extraction strategy
+    # 2. Extraction strategy
     if not descriptor:
         if not image_data:
             return jsonify({"success": False, "message": "Face image or descriptor required."}), 400
@@ -82,23 +99,6 @@ def verify_face(current_student=None):
 
     if not descriptor or len(descriptor) != 128:
         return jsonify({"success": False, "message": "Valid 128-d biometric descriptor required."}), 400
-
-    # 2. Guard: verify face_enrolled AND descriptor exists in DB before running comparison
-    from DATABASE.connection.db_connection import execute_query as _eq
-    face_row = _eq(
-        "SELECT face_enrolled, face_descriptor FROM students WHERE student_id = %s",
-        (student_id,), fetch="one"
-    )
-    face_enrolled = bool(face_row.get('face_enrolled')) if face_row else False
-    face_has_descriptor = bool(face_row.get('face_descriptor')) if face_row else False
-
-    if not face_enrolled or not face_has_descriptor:
-        return jsonify({
-            "success": False,
-            "matched": False,
-            "face_status": "not_registered",
-            "message": "Face not registered for this student. Please enroll first."
-        }), 200
 
     # 3. Run Comparison
     result = FaceService.verify_face(student_id, descriptor)
