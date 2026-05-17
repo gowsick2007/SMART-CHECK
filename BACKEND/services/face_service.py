@@ -39,7 +39,7 @@ class FaceService:
 
         descriptor = encode_face_from_image(image_path)
         if descriptor is None:
-            return {"success": False, "message": "No face detected in the uploaded image. Please try again."}
+            return {"success": False, "message": "Face not detected clearly. Keep full face inside frame, look straight, improve light, and try again."}
 
         FaceModel.save_descriptor(student_id, descriptor.tolist(), image_path=image_path)
         return {"success": True, "message": "Face enrolled successfully."}
