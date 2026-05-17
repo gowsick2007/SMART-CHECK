@@ -93,8 +93,11 @@ def get_boundary_status():
     
     if latest_logs:
         for rec in latest_logs:
-            if 'check_time' in rec and rec['check_time']:
-                rec['check_time'] = rec['check_time'].isoformat()
+            ct = rec.get('check_time')
+            if ct:
+                if ct.tzinfo is None:
+                    ct = ct.replace(tzinfo=timezone.utc)
+                rec['check_time'] = ct.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
     
     return jsonify({"success": True, "status": latest_logs}), 200
 
@@ -141,8 +144,11 @@ def get_student_monitoring():
     students = execute_query(query, fetch="all")
     if students:
         for s in students:
-            if s.get('check_time'):
-                s['check_time'] = s['check_time'].isoformat()
+            ct = s.get('check_time')
+            if ct:
+                if ct.tzinfo is None:
+                    ct = ct.replace(tzinfo=timezone.utc)
+                s['check_time'] = ct.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
     return jsonify({"success": True, "students": students})
 
 @require_admin
@@ -217,7 +223,13 @@ def get_boundary_status_check(student_id):
         lng = log.get('longitude')
         distance = log.get('distance_meters')
         status = log.get('gps_status', 'outside')
-        check_time = log.get('check_time').strftime("%Y-%m-%d %H:%M:%S") if log.get('check_time') else "—"
+        ct = log.get('check_time')
+        if ct:
+            if ct.tzinfo is None:
+                ct = ct.replace(tzinfo=timezone.utc)
+            check_time = ct.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            check_time = "—"
     else:
         lat, lng, distance, status, check_time = None, None, None, "unknown", "—"
         

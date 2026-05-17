@@ -2,7 +2,6 @@
 # face_detection_engine.py — Face Detection with PIL & dlib
 # ============================================================
 
-import face_recognition
 import numpy as np
 from PIL import Image
 from typing import Optional
@@ -12,6 +11,7 @@ class FaceDetectionEngine:
     """
     Handles face detection in images and video frames.
     Uses PIL + face_recognition (dlib under the hood). No OpenCV required.
+    face_recognition is imported lazily to avoid libX11.so.6 error at startup.
     """
 
     def __init__(self, model: str = "hog"):
@@ -28,20 +28,22 @@ class FaceDetectionEngine:
         Returns:
             List of face location tuples: (top, right, bottom, left)
         """
+        import face_recognition  # lazy: avoids libX11 at startup
         rgb = np.array(Image.open(image_path).convert("RGB"))
         locations = face_recognition.face_locations(rgb, model=self.model)
         return locations
 
     def detect_faces_from_frame(self, frame: np.ndarray):
         """
-        Detect faces from an OpenCV BGR frame.
+        Detect faces from a BGR frame (numpy array).
 
         Args:
-            frame: OpenCV image array (BGR)
+            frame: BGR image array (numpy)
 
         Returns:
             List of face location tuples
         """
+        import face_recognition  # lazy: avoids libX11 at startup
         # Convert BGR to RGB using numpy (no cv2 dependency)
         rgb_frame = frame[:, :, ::-1]
         locations = face_recognition.face_locations(rgb_frame, model=self.model)

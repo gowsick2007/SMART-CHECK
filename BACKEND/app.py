@@ -490,10 +490,16 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     @require_role(["creator"])
     def api_activity_logs(current_student=None):
         from DATABASE.connection.db_connection import execute_query
-        # Assuming last_login update is handled in login route. 
-        # Here we just fetch users who have a last_login.
+        from datetime import timezone, timedelta
+        IST = timezone(timedelta(hours=5, minutes=30))
         query = "SELECT name, last_login, role FROM students WHERE last_login IS NOT NULL ORDER BY last_login DESC LIMIT 20"
         logs = execute_query(query, fetch="all")
+        for log in (logs or []):
+            ll = log.get("last_login")
+            if ll and hasattr(ll, "strftime"):
+                if ll.tzinfo is None:
+                    ll = ll.replace(tzinfo=timezone.utc)
+                log["last_login"] = ll.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
         return jsonify({"success": True, "logs": logs})
 
     # --- /api/creator/* namespaced APIs (frontend uses these) ---
@@ -584,6 +590,8 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     @require_role(["creator"])
     def api_creator_activity_logs(current_student=None):
         from DATABASE.connection.db_connection import execute_query
+        from datetime import timezone, timedelta
+        IST = timezone(timedelta(hours=5, minutes=30))
         query = """
             SELECT name, last_login, role, is_active
             FROM students
@@ -592,6 +600,12 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             LIMIT 30
         """
         logs = execute_query(query, fetch="all")
+        for log in (logs or []):
+            ll = log.get("last_login")
+            if ll and hasattr(ll, "strftime"):
+                if ll.tzinfo is None:
+                    ll = ll.replace(tzinfo=timezone.utc)
+                log["last_login"] = ll.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
         return jsonify({"success": True, "logs": logs})
 
     @app.route("/api/system/face-config", methods=["GET"])
@@ -943,13 +957,23 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         """, fetch="all") or []
         log_map = {l["student_id"]: l for l in logs}
 
+        from datetime import timezone, timedelta
+        IST = timezone(timedelta(hours=5, minutes=30))
+
         result = []
         for s in students:
             log = log_map.get(s["student_id"])
             if log and log.get("latitude") and log.get("longitude"):
                 dist = haversine(log["latitude"], log["longitude"], COLLEGE_LAT, COLLEGE_LNG)
                 gps_status = "inside" if dist <= ACTIVE_GEOFENCE_RADIUS else "outside"
-                check_time = log["check_time"].isoformat() if log.get("check_time") else None
+                ct = log.get("check_time")
+                if ct:
+                    # DB returns UTC-naive; attach UTC then convert to IST
+                    if ct.tzinfo is None:
+                        ct = ct.replace(tzinfo=timezone.utc)
+                    check_time = ct.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    check_time = None
             else:
                 dist, gps_status, check_time = None, "unknown", None
 
