@@ -127,7 +127,28 @@ def verify_face(current_student=None):
             is_inside = distance <= ALLOWED_RADIUS
             
             if is_inside:
-                # Mark attendance present
+                # Mark attendance present manually by student
+                from DATABASE.connection.db_connection import execute_insert
+                from datetime import datetime, timezone, timedelta
+                
+                IST = timezone(timedelta(hours=5, minutes=30))
+                now = datetime.now(IST)
+                
+                query = """
+                    INSERT INTO attendance
+                        (student_id, date, time, status, latitude, longitude,
+                         location_valid, face_match_status, remarks, recorded_by_role,
+                         marked_at)
+                    VALUES (%s, %s, %s, 'present', %s, %s, %s, 'success', %s, 'student', CURRENT_TIMESTAMP)
+                    ON CONFLICT (student_id, date, recorded_by_role) DO NOTHING
+                """
+                remarks = f"{distance:.1f}m INSIDE | Face: MATCHED"
+                execute_insert(query, (
+                    student_id, now.date(), now.strftime("%H:%M:%S"),
+                    lat, lng, True, remarks
+                ))
+                
+                # Also log it in the background auto-verify system (throttled)
                 from BACKEND.models.attendance_model import store_auto_check
                 store_auto_check(student_id, lat, lng, distance, status=None, face_verified=True)
                 

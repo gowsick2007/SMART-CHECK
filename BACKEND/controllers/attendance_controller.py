@@ -68,7 +68,13 @@ def get_history(current_student=None):
         is_inside = bool(rec.get("location_valid"))
         boundary_str = "inside" if is_inside else "outside"
         
-        if role != 'system':
+        if role == 'student':
+            display_type = "Face Verified"
+            source_type = "student"
+            dist_str = f"{distance}m" if distance is not None else "—"
+            clean_distance = f"{dist_str} {boundary_str}"
+            face_display = "success"
+        elif role != 'system':
             admin_name = rec.get("marked_by_name")
             if not admin_name or str(admin_name).strip().lower() in ["admin", ""]:
                 admin_name = fallback_admin_name
