@@ -74,8 +74,15 @@ def encode_face_from_base64(base64_bytes: bytes) -> Optional[np.ndarray]:
 
     try:
         image = Image.open(io.BytesIO(base64_bytes)).convert("RGB")
+        # Upsample small webcam frames so HOG detector reliably finds faces.
+        # Webcam captures are often 320×240 or similar; dlib needs ~80px face height.
+        min_side = 400
+        w, h = image.size
+        if w < min_side or h < min_side:
+            scale = max(min_side / w, min_side / h)
+            image = image.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
         image_np = np.array(image)
-        encodings = face_recognition.face_encodings(image_np)
+        encodings = face_recognition.face_encodings(image_np, num_jitters=1)
         if not encodings:
             return None
         return encodings[0]

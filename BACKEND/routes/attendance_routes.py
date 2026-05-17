@@ -84,3 +84,28 @@ def auto_verify_check():
         "grace_timer_passed": result.get("grace_timer_passed", False)
     })
 
+@attendance_bp.route('/auto-verify/last-check', methods=['GET'])
+def auto_verify_last_check():
+    """
+    GET /api/attendance/auto-verify/last-check?student_id=XX
+    Returns the UTC epoch-ms of the student's latest auto_verify_log entry.
+    Frontend seeds localStorage from this so the countdown never resets on page switch.
+    """
+    from flask import request, jsonify
+    from DATABASE.connection.db_connection import execute_query
+    from datetime import timezone
+    student_id = request.args.get('student_id')
+    if not student_id:
+        return jsonify({"success": False, "last_check_ms": 0}), 400
+    row = execute_query(
+        "SELECT check_time FROM auto_verify_log WHERE student_id = %s ORDER BY check_time DESC LIMIT 1",
+        (student_id,), fetch="one"
+    )
+    if row and row.get("check_time"):
+        ct = row["check_time"]
+        if ct.tzinfo is None:
+            ct = ct.replace(tzinfo=timezone.utc)
+        last_ms = int(ct.timestamp() * 1000)
+    else:
+        last_ms = 0
+    return jsonify({"success": True, "last_check_ms": last_ms}), 200

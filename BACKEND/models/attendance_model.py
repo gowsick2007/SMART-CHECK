@@ -141,10 +141,12 @@ class AttendanceModel:
         # Get the aggregated stats
         query_total = """
             WITH week_bounds AS (
-                SELECT date_trunc('week', CURRENT_DATE)::date as monday
+                SELECT date_trunc('week',
+                    (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
+                )::date AS monday
             ),
             daily_status AS (
-                SELECT student_id, date, 
+                SELECT student_id, date,
                        MAX(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as is_present
                 FROM attendance
                 WHERE student_id = %s AND date >= (SELECT monday FROM week_bounds)
@@ -163,13 +165,15 @@ class AttendanceModel:
         # Get granular day-by-day boolean values (100 or 0)
         query_days = """
             WITH week_bounds AS (
-                SELECT date_trunc('week', CURRENT_DATE)::date as monday
+                SELECT date_trunc('week',
+                    (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
+                )::date AS monday
             ),
             day_series AS (
                 SELECT (monday + i * INTERVAL '1 day')::date as target_date, (i + 1) as dow_num
                 FROM week_bounds, generate_series(0, 6) AS i
             )
-            SELECT 
+            SELECT
                 ds.target_date,
                 COALESCE(MAX(CASE WHEN a.status = 'present' THEN 100 ELSE 0 END), 0) as presence_val
             FROM day_series ds

@@ -139,29 +139,54 @@ function showToast(message, type) {
 }
 
 // ── Initialization ───────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (!isLoggedIn) return;
 
     console.log("[AutoVerify] Service active");
-    
-    // Initial run
+
+    // ── Seed localStorage from backend so page-switch never resets timer ──
+    try {
+        const user = JSON.parse(localStorage.getItem('sat_student') || localStorage.getItem('user') || '{}');
+        const token = localStorage.getItem('sat_token');
+        if (user && user.student_id && token) {
+            const r = await fetch(
+                `https://smart-check-production.up.railway.app/api/attendance/auto-verify/last-check?student_id=${user.student_id}`,
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            if (r.ok) {
+                const d = await r.json();
+                if (d.last_check_ms) {
+                    // Only override localStorage if backend value is more recent
+                    const stored = parseInt(localStorage.getItem('last_auto_verification') || 0);
+                    if (d.last_check_ms > stored) {
+                        localStorage.setItem('last_auto_verification', d.last_check_ms);
+                        console.log("[AutoVerify] Seeded last check from backend:", new Date(d.last_check_ms).toLocaleTimeString());
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("[AutoVerify] Could not seed from backend:", e);
+    }
+
+    // Initial run (will respect the now-correct localStorage value)
     runAutoVerification();
-    
+
     // Run background loop check every 1 second for countdown
     setInterval(() => {
         updateScheduleUI();
         if (!isWithinSchedule()) return; // Halt counting/running outside schedule
-        
+
         const lastCheck = parseInt(localStorage.getItem('last_auto_verification') || 0);
         const lastStatus = localStorage.getItem('last_auto_status') || 'inside';
         const now = Date.now();
         const diff = now - lastCheck;
-        
+
         // If last was outside, use a 5-minute interval for grace period re-checks
         // otherwise use the standard 30-minute interval.
         const currentInterval = (lastStatus === 'outside') ? (5 * 60 * 1000) : VERIFICATION_INTERVAL;
-        
+
         if (diff >= currentInterval) {
             runAutoVerification();
         } else {
