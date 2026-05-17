@@ -74,7 +74,7 @@ def verify_face(current_student=None):
             from AI_FACE_MODULE.face_encoding_storage import encode_face_from_base64
             extracted = encode_face_from_base64(image_bytes)
             if extracted is None:
-                 return jsonify({"success": False, "message": "No recognizable face detected in camera frame."}), 400
+                 return jsonify({"success": False, "message": "Face not detected clearly. Please keep your full face inside the frame, look straight, avoid low light, remove blur, and try again."}), 400
             descriptor = extracted.tolist()
         except Exception as e:
             traceback.print_exc()
