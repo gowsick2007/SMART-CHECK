@@ -103,20 +103,48 @@ def verify_face(current_student=None):
     # 3. Run Comparison
     result = FaceService.verify_face(student_id, descriptor)
 
-    # FIX 1 + FIX 3: The old UPDATE block that stamped face_match_status='success'
-    # on today's attendance row has been REMOVED.
-    # Reasons:
-    #   - It overwrote existing rows (violates INSERT-only rule).
-    #   - It set 'Matched' on ANY row for the student today, even if that row
-    #     was created before the actual face comparison ran — causing false
-    #     'Matched' entries in history.
-    # The canonical INSERT-only write path is store_auto_check() in attendance_model.py.
-
     if result.get("matched"):
-        result["success"] = True
+        lat = data.get("latitude")
+        lng = data.get("longitude")
+        
+        if lat is not None and lng is not None:
+            # Check boundary
+            from BACKEND.services.geofence_service import calculate_distance
+            from DATABASE.connection.db_connection import execute_query as _eq2
+            res_loc = _eq2(
+                "SELECT latitude, longitude FROM boundary_locations ORDER BY updated_time DESC LIMIT 1",
+                fetch="one"
+            )
+            if res_loc:
+                COLLEGE_LAT = float(res_loc["latitude"])
+                COLLEGE_LNG = float(res_loc["longitude"])
+            else:
+                from CONFIG.college_location_config import COLLEGE_LAT, COLLEGE_LNG
+            from CONFIG.college_location_config import RADIUS
+            
+            distance = calculate_distance(lat, lng, COLLEGE_LAT, COLLEGE_LNG)
+            ALLOWED_RADIUS = RADIUS + 15
+            is_inside = distance <= ALLOWED_RADIUS
+            
+            if is_inside:
+                # Mark attendance present
+                from BACKEND.models.attendance_model import store_auto_check
+                store_auto_check(student_id, lat, lng, distance, status=None, face_verified=True)
+                
+                result["success"] = True
+                result["message"] = "Face matched and you are inside campus. Attendance marked PRESENT."
+                result["is_inside"] = True
+            else:
+                result["success"] = False
+                result["message"] = "Face matched, but you are outside campus."
+                result["is_inside"] = False
+        else:
+            # Fallback if GPS not provided
+            result["success"] = True
+            result["message"] = "Face matched successfully (location unknown)."
     else:
         result["success"] = False
-        result["message"] = result.get("message", "Face match failed.")
+        result["message"] = "Face not matched. Try again."
 
     return jsonify(result), 200
 
