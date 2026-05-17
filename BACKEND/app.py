@@ -758,6 +758,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     # --- ADVANCED CREATOR FEATURES ---
 
     @app.route("/api/creator/all-attendance", methods=["GET"])
+    @app.route("/api/creator/attendance-logs", methods=["GET"])
     @require_role(["creator"])
     def api_all_attendance(current_student=None):
         from DATABASE.connection.db_connection import execute_query
@@ -834,17 +835,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         admins = execute_query(query, fetch="all")
         return jsonify({"success": True, "users": admins})
 
-    @app.route("/api/creator/boundary-status", methods=["GET"])
-    @require_role(["creator", "admin"])
-    def api_creator_boundary_status(current_student=None):
-        # Alias for existing admin boundary status
-        return api_admin_boundary_status(current_student)
 
-    @app.route("/api/creator/attendance-logs", methods=["GET"])
-    @require_role(["creator", "admin"])
-    def api_creator_attendance_logs(current_student=None):
-        # Alias for all attendance
-        return api_all_attendance(current_student)
 
     @app.route("/remove-admin", methods=["POST"])
     @require_role(["creator"])
@@ -917,6 +908,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
 
     @app.route("/api/admin/boundary-status", methods=["GET"])
     @app.route("/api/admin/boundary-checks", methods=["GET"])
+    @app.route("/api/creator/boundary-status", methods=["GET"])
     @require_role(["creator", "admin"])
     def api_admin_boundary_status(current_student=None):
         from DATABASE.connection.db_connection import execute_query
@@ -940,8 +932,11 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             except Exception:
                 COLLEGE_LAT, COLLEGE_LNG = 0.0, 0.0
         
-        ACTIVE_GEOFENCE_RADIUS = 50
-        
+        try:
+            from CONFIG.college_location_config import RADIUS
+            ACTIVE_GEOFENCE_RADIUS = RADIUS
+        except Exception:
+            ACTIVE_GEOFENCE_RADIUS = 50
         # Get all active students
         students = execute_query(
             "SELECT student_id, name, email, department FROM students WHERE is_active = 1 AND role NOT IN ('creator','admin') ORDER BY name ASC",
@@ -1044,18 +1039,23 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         # Remarks for manual update
         remarks = "Attendance manually updated"
         
-        execute_insert("""
-            INSERT INTO attendance
-                (student_id, date, time, status, recorded_by_role, remarks, marked_by_name,
-                 face_match_status, marked_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, 'not_attempted', CURRENT_TIMESTAMP)
-        """, (
-            student_id, now.date(), now.strftime("%H:%M:%S"),
-            status, marked_by,
-            remarks,
-            admin_name
-        ))
-        return jsonify({"success": True, "message": f"Attendance for today set successfully!"})
+        try:
+            execute_insert("""
+                INSERT INTO attendance
+                    (student_id, date, time, status, recorded_by_role, remarks, marked_by_name,
+                     face_match_status, marked_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'not_attempted', CURRENT_TIMESTAMP)
+            """, (
+                student_id, now.date(), now.strftime("%H:%M:%S"),
+                status, marked_by,
+                remarks,
+                admin_name
+            ))
+            return jsonify({"success": True, "message": f"Attendance for today set successfully!"})
+        except Exception as e:
+            if "duplicate key value violates unique constraint" in str(e).lower() or "unique constraint" in str(e).lower():
+                return jsonify({"success": False, "message": "Attendance already marked for today."}), 400
+            return jsonify({"success": False, "message": "Failed to mark attendance. Database error."}), 500
 
     @app.route("/api/admin/manual-attendance", methods=["POST"])
     @require_role(["creator", "admin"])
@@ -1112,18 +1112,23 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         # Remarks for manual update
         remarks = 'Attendance manually updated'
         
-        execute_insert("""
-            INSERT INTO attendance
-                (student_id, date, time, status, recorded_by_role, remarks, marked_by_name,
-                 face_match_status, marked_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, 'not_attempted', CURRENT_TIMESTAMP)
-        """, (
-            sid, now.date(), now.strftime("%H:%M:%S"),
-            status, marked_by,
-            remarks,
-            admin_name
-        ))
-        return jsonify({"success": True, "message": f"Set {status.upper()} for {username}"})
+        try:
+            execute_insert("""
+                INSERT INTO attendance
+                    (student_id, date, time, status, recorded_by_role, remarks, marked_by_name,
+                     face_match_status, marked_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'not_attempted', CURRENT_TIMESTAMP)
+            """, (
+                sid, now.date(), now.strftime("%H:%M:%S"),
+                status, marked_by,
+                remarks,
+                admin_name
+            ))
+            return jsonify({"success": True, "message": f"Set {status.upper()} for {username}"})
+        except Exception as e:
+            if "duplicate key value violates unique constraint" in str(e).lower() or "unique constraint" in str(e).lower():
+                return jsonify({"success": False, "message": "Attendance already marked for today."}), 400
+            return jsonify({"success": False, "message": "Failed to mark attendance. Database error."}), 500
 
     @app.route("/api/admin/search-students", methods=["GET"])
     @require_role(["creator", "admin"])

@@ -327,13 +327,20 @@ async function loadAutoVerifyLogs() {
 
         tbody.innerHTML = data.logs.map(log => {
             const gpsClass   = log.gps_status === 'inside' ? 'att-present' : 'att-absent';
-            const faceClass  = log.face_status === 'verified' ? 'att-present' : 'att-absent';
+            const faceClass  = log.face_status === 'success' ? 'att-present' : 'att-absent';
             const finalClass = log.final_status === 'present' ? 'att-present' : 'att-absent';
             const ts = log.timestamp ? new Date(log.timestamp).toLocaleString() : (log.check_time ? new Date(log.check_time).toLocaleString() : '—');
+            
+            let faceHtml = '';
+            if(log.face_status === 'not_registered') faceHtml = 'NOT_REGISTERED';
+            else if(log.face_status === 'failed') faceHtml = 'FAILED';
+            else if(log.face_status === 'success') faceHtml = 'VERIFIED';
+            else faceHtml = (log.face_status || '—').toUpperCase();
+
             return `<tr>
                 <td style="font-weight:700;">${log.name || log.student_id || '—'}</td>
                 <td><span class="${gpsClass}">${(log.gps_status || '—').toUpperCase()}</span></td>
-                <td><span class="${faceClass}">${(log.face_status || '—').toUpperCase()}</span></td>
+                <td><span class="${faceClass}">${faceHtml}</span></td>
                 <td><span class="${finalClass}">${(log.final_status || '—').toUpperCase()}</span></td>
                 <td style="opacity:0.6;font-size:0.82rem;">${ts}</td>
             </tr>`;

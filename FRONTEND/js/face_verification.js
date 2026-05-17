@@ -154,6 +154,11 @@ async function startScan() {
                 window.showToast(isEnrollMode ? "Face enrolled successfully!" : data.message || "Verification successful!", "success");
             }
             
+            const bioIdEl = document.getElementById('biometric-id-display');
+            if (bioIdEl) {
+                bioIdEl.textContent = user.student_id || 'VERIFIED';
+            }
+            
             setTimeout(() => {
                 window.location.href = 'dashboard.html';
             }, 3000);

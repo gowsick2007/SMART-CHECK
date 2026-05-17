@@ -247,7 +247,7 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
             face_status_label = 'not_registered'
             face_verified = False          # force False — cannot verify unregistered face
         elif face_verified:
-            face_status_label = 'verified'
+            face_status_label = 'success'
         else:
             face_status_label = 'failed'
 
@@ -257,7 +257,7 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
 
         # ── Step 3: 30-min throttle — check auto_verify_log (NOT attendance) ──
         cursor.execute("""
-            SELECT check_time, final_status, gps_status
+            SELECT check_time, final_status, gps_status, face_status
             FROM auto_verify_log
             WHERE student_id = %s
             ORDER BY check_time DESC LIMIT 1
@@ -290,7 +290,10 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
                 # Exception: student just moved INSIDE from OUTSIDE → insert immediately
                 was_outside = (last_log['gps_status'] == 'outside')
                 just_came_inside = is_inside and was_outside
-                if not just_came_inside:
+                # Exception 2: successful face verification overrides previous failed background checks
+                is_new_face_success = face_verified and last_log['face_status'] != 'success'
+                
+                if not just_came_inside and not is_new_face_success:
                     cursor.close()
                     conn.close()
                     return {
