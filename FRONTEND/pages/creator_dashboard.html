@@ -443,6 +443,23 @@
             <option value="active">Active</option>
             <option value="disabled">Disabled</option>
           </select>
+          <select class="filter-select" id="user-dept-filter" onchange="loadAllUsers()">
+            <option value="">All Departments</option>
+            <option value="CSE">CSE</option>
+            <option value="IT">IT</option>
+            <option value="ECE">ECE</option>
+            <option value="MECH">MECH</option>
+          </select>
+          <select class="filter-select" id="user-section-filter" onchange="loadAllUsers()">
+            <option value="">All Sections</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+          </select>
+          <select class="filter-select" id="user-sort-filter" onchange="loadAllUsers()">
+            <option value="A-Z">A-Z</option>
+            <option value="Z-A">Z-A</option>
+          </select>
         </div>
         <div class="table-wrap">
           <table class="data-table">
@@ -513,6 +530,25 @@
             <option value="outside">Outside Boundary</option>
             <option value="unknown">Unknown</option>
           </select>
+          <select class="filter-select" id="cb-dept-filter" onchange="loadCreatorBoundary()">
+            <option value="">All Departments</option>
+            <option value="CSE">CSE</option>
+            <option value="IT">IT</option>
+            <option value="ECE">ECE</option>
+            <option value="MECH">MECH</option>
+          </select>
+          <select class="filter-select" id="cb-section-filter" onchange="loadCreatorBoundary()">
+            <option value="">All Sections</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+          </select>
+          <select class="filter-select" id="cb-sort-filter" onchange="loadCreatorBoundary()">
+            <option value="A-Z">Name A-Z</option>
+            <option value="Z-A">Name Z-A</option>
+            <option value="Roll-A-Z">Roll No A-Z</option>
+            <option value="Roll-Z-A">Roll No Z-A</option>
+          </select>
         </div>
         <div class="table-wrap">
           <table class="data-table">
@@ -558,6 +594,33 @@
 
       <div class="section-card">
         <h3><i class="fas fa-list-alt"></i> All Attendance Records</h3>
+        <div class="table-toolbar">
+          <input class="search-input" id="att-search" type="text" placeholder="Search student…" oninput="filterAttTable()"/>
+          <select class="filter-select" id="att-status-filter" onchange="filterAttTable()">
+            <option value="">All Status</option>
+            <option value="present">Present</option>
+            <option value="absent">Absent</option>
+          </select>
+          <select class="filter-select" id="att-dept-filter" onchange="loadAttendance()">
+            <option value="">All Departments</option>
+            <option value="CSE">CSE</option>
+            <option value="IT">IT</option>
+            <option value="ECE">ECE</option>
+            <option value="MECH">MECH</option>
+          </select>
+          <select class="filter-select" id="att-section-filter" onchange="loadAttendance()">
+            <option value="">All Sections</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+          </select>
+          <select class="filter-select" id="att-sort-filter" onchange="loadAttendance()">
+            <option value="A-Z">Name A-Z</option>
+            <option value="Z-A">Name Z-A</option>
+            <option value="Roll-A-Z">Roll No A-Z</option>
+            <option value="Roll-Z-A">Roll No Z-A</option>
+          </select>
+        </div>
         <div class="table-wrap">
           <table class="data-table">
             <thead>

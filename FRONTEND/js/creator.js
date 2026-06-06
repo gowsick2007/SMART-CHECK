@@ -26,30 +26,14 @@ function authHeaders(extra = {}) {
     };
 }
 
-function showToast(msg, type = 'success') {
-    const t = document.getElementById('toast');
-    if (!t) return;
-    t.textContent = msg;
-    t.className = `show ${type}`;
-    setTimeout(() => { t.className = ''; }, 3200);
-}
 
-function openModal(title, body, onConfirm) {
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-body').textContent = body;
-    _currentModalAction = onConfirm;
-    document.getElementById('modal-confirm').onclick = () => {
-        closeModal();
+
+async function openModal(title, body, onConfirm) {
+    if (await showConfirmModal(title, body)) {
         onConfirm();
-    };
-    document.getElementById('confirm-modal').classList.add('open');
+    }
 }
-
-function closeModal() {
-    document.getElementById('confirm-modal').classList.remove('open');
-    _currentModalAction = null;
-}
-window.closeModal = closeModal;
+window.openModal = openModal;
 
 function showLoading(el) {
     if (el) el.innerHTML = "Loading...";
@@ -176,7 +160,17 @@ async function loadAllUsers() {
     if (container) container.innerHTML = `<tr><td colspan="7" class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading users...</td></tr>`;
     
     try {
-        const res = await fetch(`${API_BASE}/api/creator/users`, { headers: authHeaders() });
+        const dept = document.getElementById('user-dept-filter')?.value || '';
+        const section = document.getElementById('user-section-filter')?.value || '';
+        const sort = document.getElementById('user-sort-filter')?.value || 'A-Z';
+        
+        const params = new URLSearchParams();
+        if (dept) params.append('department', dept);
+        if (section) params.append('section', section);
+        if (sort) params.append('sort', sort);
+        
+        const url = `${API_BASE}/api/creator/users${params.toString() ? '?' + params.toString() : ''}`;
+        const res = await fetch(url, { headers: authHeaders() });
         const data = await res.json();
                 console.log("API Response:", data);
         console.log("Data Loaded:", data);
@@ -373,7 +367,17 @@ async function loadCreatorBoundary() {
     if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading GPS status...</td></tr>`;
 
     try {
-        const res = await fetch(`${API_BASE}/api/creator/boundary-status`, { headers: authHeaders() });
+        const dept = document.getElementById('cb-dept-filter')?.value || '';
+        const section = document.getElementById('cb-section-filter')?.value || '';
+        const sort = document.getElementById('cb-sort-filter')?.value || 'A-Z';
+        
+        const params = new URLSearchParams();
+        if (dept) params.append('department', dept);
+        if (section) params.append('section', section);
+        if (sort) params.append('sort', sort);
+        
+        const url = `${API_BASE}/api/creator/boundary-status${params.toString() ? '?' + params.toString() : ''}`;
+        const res = await fetch(url, { headers: authHeaders() });
         const data = await res.json();
                 console.log("API Response:", data);
         console.log("Data Loaded:", data);
@@ -529,7 +533,17 @@ async function loadAttendance() {
     if (container) container.innerHTML = `<tr><td colspan="4" class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading attendance logs...</td></tr>`;
 
     try {
-        const res = await fetch(`${API_BASE}/api/creator/attendance-logs`, { headers: authHeaders() });
+        const dept = document.getElementById('att-dept-filter')?.value || '';
+        const section = document.getElementById('att-section-filter')?.value || '';
+        const sort = document.getElementById('att-sort-filter')?.value || 'A-Z';
+        
+        const params = new URLSearchParams();
+        if (dept) params.append('department', dept);
+        if (section) params.append('section', section);
+        if (sort) params.append('sort', sort);
+        
+        const url = `${API_BASE}/api/creator/attendance-logs${params.toString() ? '?' + params.toString() : ''}`;
+        const res = await fetch(url, { headers: authHeaders() });
         const data = await res.json();
                 console.log("API Response:", data);
         console.log("Data Loaded:", data);

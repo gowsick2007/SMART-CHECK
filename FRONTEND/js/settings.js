@@ -42,8 +42,8 @@ function applyTheme(isDark) {
     }
 }
 
-function resetAll() {
-    if (confirm("Are you sure you want to reset all settings to default?")) {
+async function resetAll() {
+    if (await showConfirmModal('Reset Settings', "Are you sure you want to reset all settings to default?")) {
         localStorage.removeItem('user_settings');
         location.reload();
     }

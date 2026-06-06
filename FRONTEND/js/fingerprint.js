@@ -200,20 +200,6 @@ async function triggerScan() {
         status.style.color = "var(--accent-red)";
         isScanning = false;
         console.error("Biometric Failure:", err);
-        window.showToast(err.message || "Touch sensor to authenticate.", "error");
+        window.showErrorToast(err.message || "Touch sensor to authenticate.");
     }
 }
-
-function showToast(message, type) {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `<i class="fa-solid fa-info-circle"></i> <span>${message}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 500);
-    }, 3500);
-}
-window.showToast = showToast;

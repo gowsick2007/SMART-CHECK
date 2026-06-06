@@ -14,7 +14,7 @@ async function loadHistory() {
     window.studentHistoryRecords = [];
 
     try {
-        const res = await fetch(`https://smart-check-production.up.railway.app/api/attendance/history?student_id=${user.student_id}&_t=${Date.now()}`, {
+        const res = await fetch(`/api/attendance/history?student_id=${user.student_id}&_t=${Date.now()}`, {
             headers: { 
                 'Authorization': `Bearer ${token}`,
                 'Cache-Control': 'no-cache',
@@ -90,9 +90,9 @@ function renderHistory(records) {
     `; }).join('');
 }
 
-function exportHistoryCSV() {
+async function exportHistoryCSV() {
     if (!window.studentHistoryRecords || window.studentHistoryRecords.length === 0) {
-        alert("No records to export.");
+        await showWarningToast("No records to export.");
         return;
     }
     

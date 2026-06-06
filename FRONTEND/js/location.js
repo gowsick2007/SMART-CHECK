@@ -103,7 +103,7 @@ window.initMap = initMap;
 async function saveBoundaryLocation() {
     // Confirm/save button MUST: verify values exist
     if (selectedLat === null || selectedLng === null) {
-        alert("Please select a location on the map");
+        await showWarningToast("Please select a location on the map");
         return;
     }
 
@@ -115,7 +115,7 @@ async function saveBoundaryLocation() {
 
     const token = localStorage.getItem('sat_token');
     try {
-        const res = await fetch('https://smart-check-production.up.railway.app/api/location/save-boundary', {
+        const res = await fetch('/api/location/save-boundary', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -134,11 +134,11 @@ async function saveBoundaryLocation() {
             // Continue to dashboard properly via absolute route
             window.location.href = '/dashboard';
         } else {
-            alert(data.message || "Failed to save location");
+            await showErrorToast(data.message || "Failed to save location");
         }
     } catch (err) {
         console.error("Save Error:", err);
-        alert("Server connection failed");
+        await showErrorToast("Server connection failed");
     }
 }
 

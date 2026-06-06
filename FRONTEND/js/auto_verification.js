@@ -106,7 +106,7 @@ async function runAutoVerification() {
 
         // 3. Mark Attendance / Auto-Check
         const token = localStorage.getItem('sat_token');
-        const res = await fetch('https://smart-check-production.up.railway.app/api/attendance/auto-mark', {
+        const res = await fetch('/api/attendance/auto-mark', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -154,22 +154,6 @@ function updateCountdownUI(ms) {
     timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-function showToast(message, type) {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i> <span>${message}</span>`;
-    container.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
-        setTimeout(() => toast.remove(), 500);
-    }, 4000);
-}
-
 // ── Initialization ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
@@ -179,7 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Fetch schedule
     try {
-        const scheduleRes = await fetch('https://smart-check-production.up.railway.app/api/admin/schedule');
+        const scheduleRes = await fetch('/api/admin/schedule');
         if (scheduleRes.ok) {
             const data = await scheduleRes.json();
             if (data.success && data.schedule) {
@@ -197,7 +181,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const token = localStorage.getItem('sat_token');
         if (user && user.student_id && token) {
             const r = await fetch(
-                `https://smart-check-production.up.railway.app/api/attendance/auto-verify/last-check?student_id=${user.student_id}`,
+                `/api/attendance/auto-verify/last-check?student_id=${user.student_id}`,
                 { headers: { 'Authorization': `Bearer ${token}` } }
             );
             if (r.ok) {

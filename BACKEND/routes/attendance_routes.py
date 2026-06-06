@@ -98,14 +98,11 @@ def auto_verify_last_check():
     if not student_id:
         return jsonify({"success": False, "last_check_ms": 0}), 400
     row = execute_query(
-        "SELECT check_time FROM auto_verify_log WHERE student_id = %s ORDER BY check_time DESC LIMIT 1",
+        "SELECT EXTRACT(EPOCH FROM check_time) * 1000 AS check_ms FROM auto_verify_log WHERE student_id = %s ORDER BY check_time DESC LIMIT 1",
         (student_id,), fetch="one"
     )
-    if row and row.get("check_time"):
-        ct = row["check_time"]
-        if ct.tzinfo is None:
-            ct = ct.replace(tzinfo=timezone.utc)
-        last_ms = int(ct.timestamp() * 1000)
+    if row and row.get("check_ms"):
+        last_ms = int(row["check_ms"])
     else:
         last_ms = 0
     return jsonify({"success": True, "last_check_ms": last_ms}), 200

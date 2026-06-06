@@ -402,7 +402,7 @@
             window.location.href = '/dashboard';
           }, 1500);
         } else {
-          alert("Error: " + result.message);
+          showToast("Error: " + result.message);
         }
       } catch (err) {
         // Successful fallback
@@ -413,14 +413,6 @@
       }
     }
 
-    function showToast(msg) {
-      const toast = document.getElementById("toast");
-      toast.textContent = msg;
-      toast.style.display = "block";
-      setTimeout(() => {
-        toast.style.display = "none";
-      }, 2500);
-    }
 
     window.addEventListener('load', initMap);
   </script>

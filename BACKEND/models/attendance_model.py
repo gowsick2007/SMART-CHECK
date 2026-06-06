@@ -48,7 +48,7 @@ class AttendanceModel:
                 NULL        AS marked_by_name,
                 marked_at
             FROM attendance
-            WHERE student_id = %s
+            WHERE student_id = %s AND coalesce(recorded_by_role, '') != 'system'
 
             UNION ALL
 

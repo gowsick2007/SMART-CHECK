@@ -364,14 +364,36 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     @require_role(["creator", "admin"])
     def get_verification_logs(current_student=None):
         from DATABASE.connection.db_connection import execute_query
+        from flask import request
+        dept = request.args.get("department")
+        section = request.args.get("section")
+        sort = request.args.get("sort", "A-Z")
+        
         query = """
-            SELECT l.*, s.name 
+            SELECT l.*, s.name, s.department, s.class_name 
             FROM auto_verify_log l
             JOIN students s ON l.student_id = s.student_id
-            ORDER BY l.check_time DESC
-            LIMIT 100
+            WHERE 1=1
         """
-        logs = execute_query(query, fetch="all")
+        params = []
+        if dept:
+            query += " AND s.department = %s"
+            params.append(dept)
+        if section:
+            query += " AND s.class_name = %s"
+            params.append(section)
+            
+        if sort == "Z-A":
+            query += " ORDER BY s.name DESC, l.check_time DESC"
+        elif sort == "Roll-A-Z":
+            query += " ORDER BY s.student_id ASC, l.check_time DESC"
+        elif sort == "Roll-Z-A":
+            query += " ORDER BY s.student_id DESC, l.check_time DESC"
+        else:
+            query += " ORDER BY l.check_time DESC"
+            
+        query += " LIMIT 100"
+        logs = execute_query(query, tuple(params), fetch="all") or []
         return jsonify({"success": True, "logs": logs})
 
     # --- NEW CREATOR APIs ---
@@ -508,9 +530,33 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     @require_role(["creator"])
     def api_creator_get_users(current_student=None):
         from DATABASE.connection.db_connection import execute_query
+        from flask import request
         print("Users Loaded")
-        query = "SELECT student_id, name, email, role, department, is_active, last_login FROM students ORDER BY role DESC, name ASC"
-        users = execute_query(query, fetch="all")
+        
+        dept = request.args.get("department")
+        section = request.args.get("section")
+        sort = request.args.get("sort", "A-Z")
+        
+        query = "SELECT student_id, name, email, role, department, class_name as section, is_active, last_login FROM students WHERE 1=1"
+        params = []
+        
+        if dept:
+            query += " AND department = %s"
+            params.append(dept)
+        if section:
+            query += " AND class_name = %s"
+            params.append(section)
+            
+        if sort == "Z-A":
+            query += " ORDER BY role DESC, name DESC"
+        elif sort == "Roll-A-Z":
+            query += " ORDER BY role DESC, student_id ASC"
+        elif sort == "Roll-Z-A":
+            query += " ORDER BY role DESC, student_id DESC"
+        else:
+            query += " ORDER BY role DESC, name ASC"
+            
+        users = execute_query(query, tuple(params), fetch="all")
         return jsonify({"success": True, "users": users})
 
     @app.route("/api/creator/make-admin", methods=["POST"])
@@ -761,9 +807,31 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     @app.route("/api/creator/attendance-logs", methods=["GET"])
     @require_role(["creator"])
     def api_all_attendance(current_student=None):
-        from DATABASE.connection.db_connection import execute_query
-        query = "SELECT a.*, s.name FROM attendance a JOIN students s ON a.student_id = s.student_id ORDER BY a.marked_at DESC LIMIT 500"
-        records = execute_query(query, fetch="all") or []
+        from flask import request
+        dept = request.args.get("department")
+        section = request.args.get("section")
+        sort = request.args.get("sort", "A-Z")
+        
+        query = "SELECT a.*, s.name, s.department, s.class_name FROM attendance a JOIN students s ON a.student_id = s.student_id WHERE 1=1"
+        params = []
+        if dept:
+            query += " AND s.department = %s"
+            params.append(dept)
+        if section:
+            query += " AND s.class_name = %s"
+            params.append(section)
+            
+        if sort == "Z-A":
+            query += " ORDER BY s.name DESC, a.marked_at DESC"
+        elif sort == "Roll-A-Z":
+            query += " ORDER BY s.student_id ASC, a.marked_at DESC"
+        elif sort == "Roll-Z-A":
+            query += " ORDER BY s.student_id DESC, a.marked_at DESC"
+        else:
+            query += " ORDER BY a.marked_at DESC"
+            
+        query += " LIMIT 500"
+        records = execute_query(query, tuple(params), fetch="all") or []
         import datetime
         for r in records:
             if r.get("marked_at") and hasattr(r["marked_at"], "strftime"):
@@ -937,10 +1005,30 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             ACTIVE_GEOFENCE_RADIUS = RADIUS
         except Exception:
             ACTIVE_GEOFENCE_RADIUS = 50
-        # Get all active students
-        students = execute_query(
-            "SELECT student_id, name, email, department FROM students WHERE is_active = 1 AND role NOT IN ('creator','admin') ORDER BY name ASC",
-            fetch="all") or []
+        from flask import request
+        dept = request.args.get("department")
+        section = request.args.get("section")
+        sort = request.args.get("sort", "A-Z")
+        
+        query = "SELECT student_id, name, email, department FROM students WHERE is_active = 1 AND role NOT IN ('creator','admin')"
+        params = []
+        if dept:
+            query += " AND department = %s"
+            params.append(dept)
+        if section:
+            query += " AND class_name = %s"
+            params.append(section)
+            
+        if sort == "Z-A":
+            query += " ORDER BY name DESC"
+        elif sort == "Roll-A-Z":
+            query += " ORDER BY student_id ASC"
+        elif sort == "Roll-Z-A":
+            query += " ORDER BY student_id DESC"
+        else:
+            query += " ORDER BY name ASC"
+            
+        students = execute_query(query, tuple(params), fetch="all") or []
 
         # Get latest GPS log per student from auto_verify_log (Today only)
         logs = execute_query("""
@@ -982,8 +1070,18 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
                 "last_check": check_time
             })
             
-        # Sort by latest check time
-        result.sort(key=lambda x: x.get("last_check") or "", reverse=True)
+        # Sorting should ideally be based on the selected option or by check_time if not specified
+        # But we'll retain the requested name sort by not overriding it completely.
+        # If user wants A-Z, we'll keep the students order. 
+        if sort == "Z-A":
+            result.sort(key=lambda x: x.get("name") or "", reverse=True)
+        elif sort == "Roll-A-Z":
+            result.sort(key=lambda x: x.get("student_id") or "")
+        elif sort == "Roll-Z-A":
+            result.sort(key=lambda x: x.get("student_id") or "", reverse=True)
+        else:
+            result.sort(key=lambda x: x.get("name") or "")
+            
         return jsonify({"success": True, "students": result})
 
     # ── Admin API: Mark Attendance ────────────────────────────
@@ -1159,18 +1257,38 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     @app.route("/api/admin/attendance-logs", methods=["GET"])
     @require_role(["creator", "admin"])
     def api_admin_attendance_logs(current_student=None):
-        from DATABASE.connection.db_connection import execute_query
+        from flask import request
+        dept = request.args.get("department")
+        section = request.args.get("section")
+        sort = request.args.get("sort", "A-Z")
+        
         query = """
             SELECT a.student_id, s.name, a.date, a.time, a.status,
                    COALESCE(a.recorded_by_role, 'system') as recorded_by_role,
-                   a.marked_at
+                   a.marked_at, s.department, s.class_name
             FROM attendance a
             JOIN students s ON a.student_id = s.student_id
             WHERE a.date = CURRENT_DATE
-            ORDER BY a.marked_at DESC NULLS LAST
-            LIMIT 500
         """
-        records = execute_query(query, fetch="all") or []
+        params = []
+        if dept:
+            query += " AND s.department = %s"
+            params.append(dept)
+        if section:
+            query += " AND s.class_name = %s"
+            params.append(section)
+            
+        if sort == "Z-A":
+            query += " ORDER BY s.name DESC, a.marked_at DESC NULLS LAST"
+        elif sort == "Roll-A-Z":
+            query += " ORDER BY s.student_id ASC, a.marked_at DESC NULLS LAST"
+        elif sort == "Roll-Z-A":
+            query += " ORDER BY s.student_id DESC, a.marked_at DESC NULLS LAST"
+        else:
+            query += " ORDER BY a.marked_at DESC NULLS LAST"
+            
+        query += " LIMIT 500"
+        records = execute_query(query, tuple(params), fetch="all") or []
         import datetime
         for r in records:
             if r.get("marked_at") and isinstance(r["marked_at"], (datetime.datetime, datetime.date)):

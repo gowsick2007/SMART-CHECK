@@ -324,7 +324,7 @@
       const token = localStorage.getItem('sat_token');
 
       try {
-        const res = await fetch('https://smart-check-production.up.railway.app/api/student/set-boundary', {
+        const res = await fetch('/api/student/set-boundary', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

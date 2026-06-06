@@ -2,22 +2,66 @@
 // auth.js — Authentication & Session Logic
 // ============================================================
 
-const API_BASE = 'https://smart-check-production.up.railway.app';
+const API_BASE = '';
 
-// ── Toast Notifications ──────────────────────────────────────
-function showToast(message, type = 'info', duration = 3500) {
+// ── Themed Modal & Toast System ─────────────────────────────────
+
+window.showSuccessToast = function(message, duration = 3500) {
+  _createAndShowToast(message, 'success', '#00ffcc', 'fa-check-circle');
+};
+
+window.showErrorToast = function(message, duration = 3500) {
+  _createAndShowToast(message, 'error', '#ff4d4d', 'fa-times-circle');
+};
+
+window.showWarningToast = function(message, duration = 3500) {
+  _createAndShowToast(message, 'warning', '#ff9f43', 'fa-exclamation-triangle');
+};
+
+window.showToast = function(message, type = 'info', duration = 3500) {
+  if (type === 'error') showErrorToast(message, duration);
+  else if (type === 'warning') showWarningToast(message, duration);
+  else showSuccessToast(message, duration);
+};
+
+function _createAndShowToast(message, type, color, iconClass) {
   const container = document.getElementById('toast-container');
   if (!container) return;
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.textContent = message;
+  toast.style.cssText = `
+    background: rgba(10, 15, 30, 0.95);
+    border: 1px solid ${color};
+    border-left: 4px solid ${color};
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    backdrop-filter: blur(8px);
+    color: #fff;
+    padding: 16px 24px;
+    border-radius: 8px;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    transform: translateX(120%);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    opacity: 0;
+  `;
+  toast.innerHTML = `<i class="fas ${iconClass}" style="color:${color}; font-size:1.2rem;"></i><span>${message}</span>`;
   container.appendChild(toast);
+  
+  // Animate in
+  requestAnimationFrame(() => {
+    toast.style.transform = 'translateX(0)';
+    toast.style.opacity = '1';
+  });
+
   setTimeout(() => {
+    toast.style.transform = 'translateX(120%)';
     toast.style.opacity = '0';
-    toast.style.transform = 'translateX(100%)';
-    toast.style.transition = 'all 0.3s ease';
     setTimeout(() => toast.remove(), 300);
-  }, duration);
+  }, 3500);
 }
 
 // ── Login Handler ─────────────────────────────────────────────
@@ -314,3 +358,47 @@ async function renderSidebarFeatures() {
 }
 
 document.addEventListener('DOMContentLoaded', renderSidebarFeatures);
+
+// ── Custom Modals ─────────────────────────────────────────────
+window.showConfirmModal = function(title, msg) {
+  return new Promise(resolve => {
+    let m = document.getElementById('global-confirm-modal');
+    if(!m) {
+      document.body.insertAdjacentHTML('beforeend', `
+        <div id="global-confirm-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(10px); z-index:10000; display:none; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s;">
+          <div id="global-confirm-card" style="background:linear-gradient(145deg, rgba(20,25,40,0.9), rgba(10,15,30,0.95)); border:1px solid rgba(0,255,204,0.2); border-radius:16px; padding:32px; min-width:340px; max-width:90vw; text-align:center; box-shadow:0 15px 40px rgba(0,0,0,0.5), 0 0 20px rgba(0,255,204,0.1); transform:scale(0.9); transition:transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+            <div style="font-size:2.5rem; color:#00ffcc; margin-bottom:15px;"><i class="fas fa-question-circle"></i></div>
+            <h3 id="global-confirm-title" style="margin:0 0 12px; color:#fff; font-family:'Outfit', sans-serif; font-size:1.4rem; font-weight:700; letter-spacing:0.5px;">Confirm Action</h3>
+            <p id="global-confirm-msg" style="color:rgba(255,255,255,0.7); margin-bottom:28px; line-height:1.6; font-size:1rem;"></p>
+            <div style="display:flex; gap:12px; justify-content:center;">
+              <button id="global-confirm-cancel" style="flex:1; padding:12px 24px; background:transparent; border:1px solid rgba(255,255,255,0.2); color:#fff; border-radius:8px; cursor:pointer; font-weight:600; transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">Cancel</button>
+              <button id="global-confirm-ok" style="flex:1; padding:12px 24px; background:linear-gradient(45deg, #00ffcc, #0099ff); border:none; color:#000; border-radius:8px; cursor:pointer; font-weight:700; box-shadow:0 4px 15px rgba(0,255,204,0.3); transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">Confirm</button>
+            </div>
+          </div>
+        </div>
+      `);
+      m = document.getElementById('global-confirm-modal');
+    }
+    document.getElementById('global-confirm-title').textContent = title || "Confirm Action";
+    document.getElementById('global-confirm-msg').textContent = msg;
+    
+    m.style.display = 'flex';
+    // Animate in
+    requestAnimationFrame(() => {
+        m.style.opacity = '1';
+        document.getElementById('global-confirm-card').style.transform = 'scale(1)';
+    });
+
+    const close = (result) => {
+        m.style.opacity = '0';
+        document.getElementById('global-confirm-card').style.transform = 'scale(0.9)';
+        setTimeout(() => {
+            m.style.display = 'none';
+            resolve(result);
+        }, 200);
+    };
+
+    document.getElementById('global-confirm-cancel').onclick = () => close(false);
+    document.getElementById('global-confirm-ok').onclick = () => close(true);
+  });
+};

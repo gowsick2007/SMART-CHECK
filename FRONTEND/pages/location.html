@@ -249,11 +249,11 @@
           },
           (error) => {
             btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Enable Location Access';
-            alert("Location access denied. Please allow location permissions in your browser.");
+            showErrorToast("Location access denied. Please allow location permissions in your browser.");
           }
         );
       } else {
-        alert("Geolocation is not supported by this browser.");
+        showErrorToast("Geolocation is not supported by this browser.");
       }
     }
 
@@ -282,7 +282,7 @@
     const originalSave = window.saveBoundaryLocation;
     window.saveBoundaryLocation = async function() {
         if (!selectedLat || !selectedLng) {
-            alert("Please select a location on the map");
+            await showWarningToast("Please select a location on the map");
             return;
         }
         

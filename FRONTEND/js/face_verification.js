@@ -108,7 +108,7 @@ async function startScan() {
 
         let res, data;
         try {
-            res = await fetch(`https://smart-check-production.up.railway.app${endpoint}`, {
+            res = await fetch(`${endpoint}`, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',

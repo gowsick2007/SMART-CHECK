@@ -22,14 +22,6 @@ function authHeaders() {
     };
 }
 
-function showToast(msg, type = 'success') {
-    const t = document.getElementById('toast');
-    if (!t) return;
-    t.textContent = msg;
-    t.className = `show ${type}`;
-    setTimeout(() => { t.className = ''; }, 3200);
-}
-
 // ── Section navigation ────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -129,7 +121,17 @@ function setText(id, val) {
 
 async function loadBoundaryStatus() {
     try {
-        const res = await fetch(`${API_BASE}/api/admin/boundary-checks`, { headers: authHeaders() });
+        const dept = document.getElementById('boundary-dept-filter')?.value || '';
+        const section = document.getElementById('boundary-section-filter')?.value || '';
+        const sort = document.getElementById('boundary-sort-filter')?.value || 'A-Z';
+        
+        const params = new URLSearchParams();
+        if (dept) params.append('department', dept);
+        if (section) params.append('section', section);
+        if (sort) params.append('sort', sort);
+        
+        const url = `${API_BASE}/api/admin/boundary-checks${params.toString() ? '?' + params.toString() : ''}`;
+        const res = await fetch(url, { headers: authHeaders() });
         const data = await res.json();
         console.log("Data Loaded:", data);
         if (!data.success) { 
@@ -236,7 +238,7 @@ window.filterBoundaryTable = filterBoundaryTable;
 // ── 3. Mark Attendance ────────────────────────────────────────
 
 async function markAttendance(studentId, name, status) {
-    if (!confirm(`Are you sure you want to mark ${name} as ${status.toUpperCase()}?`)) return;
+    if (!(await showConfirmModal('Confirm Attendance Update', `Are you sure you want to mark ${name} as ${status.toUpperCase()}?`))) return;
     try {
         const res = await fetch(`${API_BASE}/api/admin/mark-attendance`, {
             method: 'POST',
@@ -263,7 +265,17 @@ window.markAttendance = markAttendance;
 
 async function loadAttendanceLogs() {
     try {
-        const res = await fetch(`${API_BASE}/api/admin/attendance-logs`, { headers: authHeaders() });
+        const dept = document.getElementById('att-dept-filter')?.value || '';
+        const section = document.getElementById('att-section-filter')?.value || '';
+        const sort = document.getElementById('att-sort-filter')?.value || 'A-Z';
+        
+        const params = new URLSearchParams();
+        if (dept) params.append('department', dept);
+        if (section) params.append('section', section);
+        if (sort) params.append('sort', sort);
+        
+        const url = `${API_BASE}/api/admin/attendance-logs${params.toString() ? '?' + params.toString() : ''}`;
+        const res = await fetch(url, { headers: authHeaders() });
         const data = await res.json();
         console.log("Data Loaded:", data);
         const tbody = document.getElementById('attendance-list');
@@ -314,7 +326,17 @@ window.filterAttTable = filterAttTable;
 
 async function loadAutoVerifyLogs() {
     try {
-        const res = await fetch(`${API_BASE}/api/admin/auto-verification`, { headers: authHeaders() });
+        const dept = document.getElementById('auto-dept-filter')?.value || '';
+        const section = document.getElementById('auto-section-filter')?.value || '';
+        const sort = document.getElementById('auto-sort-filter')?.value || 'A-Z';
+        
+        const params = new URLSearchParams();
+        if (dept) params.append('department', dept);
+        if (section) params.append('section', section);
+        if (sort) params.append('sort', sort);
+        
+        const url = `${API_BASE}/api/admin/auto-verification${params.toString() ? '?' + params.toString() : ''}`;
+        const res = await fetch(url, { headers: authHeaders() });
         const data = await res.json();
         console.log("Data Loaded:", data);
         const tbody = document.getElementById('autoverify-list');
@@ -444,7 +466,7 @@ async function submitManualAttendance(status) {
         return;
     }
 
-    if (!confirm(`Are you sure you want to mark ${rawUsername || _selectedManualStudentId} as ${status.toUpperCase()}?`)) return;
+    if (!(await showConfirmModal('Confirm Attendance Update', `Are you sure you want to mark ${rawUsername || _selectedManualStudentId} as ${status.toUpperCase()}?`))) return;
     
     try {
         const res = await fetch(`${API_BASE}/api/admin/manual-attendance`, {

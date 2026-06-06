@@ -2,7 +2,7 @@
 // attendance.js — Dashboard Orchestration & Attendance Marking
 // ============================================================
 
-const API = 'https://smart-check-production.up.railway.app';
+const API = '';
 let currentStudent = null;
 let gpsResult      = null;
 

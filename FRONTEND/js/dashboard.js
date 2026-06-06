@@ -60,7 +60,7 @@ function startClock() {
 async function loadAttendanceSummary(studentId) {
     const token = localStorage.getItem('sat_token');
     try {
-        const res = await fetch(`https://smart-check-production.up.railway.app/api/attendance/weekly-summary?student_id=${studentId}`, {
+        const res = await fetch(`/api/attendance/weekly-summary?student_id=${studentId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -90,7 +90,7 @@ function updateGeofenceUI() {
         if(!user.student_id) return;
 
         const token = localStorage.getItem('sat_token');
-        const res = await fetch('https://smart-check-production.up.railway.app/api/attendance/auto-verify/check', {
+        const res = await fetch('/api/attendance/auto-verify/check', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -133,7 +133,7 @@ function updateGeofenceUI() {
 async function checkFaceRegistration(studentId) {
     const token = localStorage.getItem('sat_token');
     try {
-        const res = await fetch(`https://smart-check-production.up.railway.app/api/face/status/${studentId}`, {
+        const res = await fetch(`/api/face/status/${studentId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
