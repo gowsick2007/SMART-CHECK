@@ -278,3 +278,33 @@ def get_all_students_list():
             "last_check": check_time.strftime("%Y-%m-%d %H:%M:%S") if check_time else "—"
         })
     return {"success": True, "students": res}
+
+import json
+import os
+
+def get_schedule():
+    """GET /api/admin/schedule"""
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "CONFIG", "schedule.json")
+    try:
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                return jsonify({"success": True, "schedule": json.load(f)}), 200
+    except Exception as e:
+        pass
+    return jsonify({"success": True, "schedule": {"start_time": "09:00", "stop_time": "17:00"}}), 200
+
+@require_admin
+def update_schedule():
+    """POST /api/admin/schedule"""
+    data = request.get_json()
+    start_time = data.get("start_time", "09:00")
+    stop_time = data.get("stop_time", "17:00")
+    
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "CONFIG", "schedule.json")
+    try:
+        with open(path, "w") as f:
+            json.dump({"start_time": start_time, "stop_time": stop_time}, f)
+        return jsonify({"success": True, "message": "Schedule updated successfully"}), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+

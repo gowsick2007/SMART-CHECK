@@ -57,7 +57,16 @@
   
   <div style="display:flex; justify-content:space-between; align-items:center;">
     <div class="admin-title">Admin Dashboard</div>
-    <button class="btn btn-ghost" onclick="exportCSV()">Export CSV</button>
+    <div style="display:flex; gap:1rem; align-items:center;">
+      <div style="display:flex; gap:0.5rem; align-items:center; background: rgba(10, 15, 30, 0.6); padding: 0.5rem 1rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);">
+        <span style="color:var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; font-weight: 600;">Schedule</span>
+        <input type="time" id="sched-start" class="filter-input" style="padding:0.3rem;" value="09:00">
+        <span style="color:var(--text-muted);">to</span>
+        <input type="time" id="sched-stop" class="filter-input" style="padding:0.3rem;" value="17:00">
+        <button class="btn btn-primary" style="padding:0.3rem 0.8rem; font-size:0.85rem;" onclick="saveScheduleAdmin()">Save</button>
+      </div>
+      <button class="btn btn-ghost" onclick="exportCSV()">Export CSV</button>
+    </div>
   </div>
 
   <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
@@ -125,7 +134,41 @@
   function initAdmin() {
     loadSummary();
     loadStudents();
+    loadScheduleAdmin();
     setInterval(loadBoundaryStatus, 60000); // 60 seconds
+  }
+  
+  async function loadScheduleAdmin() {
+    try {
+      const res = await fetch('/api/admin/schedule');
+      if (res.ok) {
+        const data = await res.json();
+        if(data.success && data.schedule) {
+          document.getElementById('sched-start').value = data.schedule.start_time || "09:00";
+          document.getElementById('sched-stop').value = data.schedule.stop_time || "17:00";
+        }
+      }
+    } catch(e) {}
+  }
+  
+  async function saveScheduleAdmin() {
+    const start = document.getElementById('sched-start').value;
+    const stop = document.getElementById('sched-stop').value;
+    try {
+      const res = await fetch('/api/admin/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+        body: JSON.stringify({ start_time: start, stop_time: stop })
+      });
+      const data = await res.json();
+      if(data.success) {
+        showToast('Schedule updated successfully', 'success');
+      } else {
+        showToast(data.message || 'Failed to update schedule', 'error');
+      }
+    } catch(e) {
+      showToast('Error updating schedule', 'error');
+    }
   }
 
   async function loadSummary() {

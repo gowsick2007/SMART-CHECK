@@ -1,11 +1,13 @@
 from flask import Blueprint
-from BACKEND.controllers.admin_controller import admin_login, get_all_students, get_today_summary, require_admin
+from BACKEND.controllers.admin_controller import admin_login, get_all_students, get_today_summary, require_admin, get_schedule, update_schedule
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
 
 admin_bp.route("/login", methods=["POST"])(admin_login)
 admin_bp.route("/all-students-old", methods=["GET"])(get_all_students)
 admin_bp.route("/today-summary", methods=["GET"])(get_today_summary)
+admin_bp.route("/schedule", methods=["GET"])(get_schedule)
+admin_bp.route("/schedule", methods=["POST"])(update_schedule)
 
 
 @admin_bp.route('/boundary-check', methods=['GET'])

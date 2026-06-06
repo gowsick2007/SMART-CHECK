@@ -11,6 +11,8 @@ async function loadHistory() {
     const token = localStorage.getItem('sat_token');
     if (!user.student_id) return;
 
+    window.studentHistoryRecords = [];
+
     try {
         const res = await fetch(`https://smart-check-production.up.railway.app/api/attendance/history?student_id=${user.student_id}&_t=${Date.now()}`, {
             headers: { 
@@ -22,6 +24,7 @@ async function loadHistory() {
         const data = await res.json();
         
         if (data.success) {
+            window.studentHistoryRecords = data.records;
             renderHistory(data.records);
         } else {
             document.getElementById('history-table-body').innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Failed to fetch history.</td></tr>';
@@ -85,4 +88,32 @@ function renderHistory(records) {
             </td>
         </tr>
     `; }).join('');
+}
+
+function exportHistoryCSV() {
+    if (!window.studentHistoryRecords || window.studentHistoryRecords.length === 0) {
+        alert("No records to export.");
+        return;
+    }
+    
+    let csv = "Date,Time,Type,Boundary,Face Match,Distance,Status\n";
+    window.studentHistoryRecords.forEach(rec => {
+        const date = rec.date || '—';
+        const time = rec.time || '—';
+        const type = rec.type || 'Auto Verified';
+        const isInside = (rec.boundary === 'inside' || rec.location_valid === true || rec.location_valid === 1) ? 'INSIDE' : 'OUTSIDE';
+        const faceMatched = (rec.face_match === 'success' || rec.face_match === 'match' || rec.face_match_status === 'success' || rec.face_match_status === 'match') ? 'Matched' : '—';
+        const distance = rec.distance || '—';
+        const status = (rec.status || 'absent').toUpperCase();
+        
+        // Escape quotes if needed, though simple data here
+        csv += `"${date}","${time}","${type}","${isInside}","${faceMatched}","${distance}","${status}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'my_attendance_history.csv');
+    a.click();
 }

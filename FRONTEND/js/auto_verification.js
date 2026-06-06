@@ -8,7 +8,39 @@ let isVerifying = false;
 function isWithinSchedule() {
     const now = new Date();
     const hour = now.getHours();
-    return (hour >= 9 && hour < 17); // 9:00 AM to 4:59:59 PM
+    const min = now.getMinutes();
+    
+    // Parse start/stop from localStorage (default 09:00 to 17:00)
+    let startHour = 9, startMin = 0;
+    let stopHour = 17, stopMin = 0;
+    
+    const startStr = localStorage.getItem('schedule_start') || "09:00";
+    const stopStr = localStorage.getItem('schedule_stop') || "17:00";
+    
+    if (startStr.includes(":")) {
+        let parts = startStr.split(":");
+        startHour = parseInt(parts[0], 10);
+        startMin = parseInt(parts[1], 10);
+    }
+    if (stopStr.includes(":")) {
+        let parts = stopStr.split(":");
+        stopHour = parseInt(parts[0], 10);
+        stopMin = parseInt(parts[1], 10);
+    }
+    
+    const currentMins = hour * 60 + min;
+    const startMins = startHour * 60 + startMin;
+    const stopMins = stopHour * 60 + stopMin;
+    
+    // Lunch break: 12:00 to 13:30
+    const lunchStart = 12 * 60;
+    const lunchEnd = 13 * 60 + 30;
+    
+    if (currentMins >= lunchStart && currentMins < lunchEnd) {
+        return false;
+    }
+    
+    return (currentMins >= startMins && currentMins <= stopMins);
 }
 
 function updateScheduleUI() {
@@ -144,6 +176,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!isLoggedIn) return;
 
     console.log("[AutoVerify] Service active");
+
+    // Fetch schedule
+    try {
+        const scheduleRes = await fetch('https://smart-check-production.up.railway.app/api/admin/schedule');
+        if (scheduleRes.ok) {
+            const data = await scheduleRes.json();
+            if (data.success && data.schedule) {
+                localStorage.setItem('schedule_start', data.schedule.start_time);
+                localStorage.setItem('schedule_stop', data.schedule.stop_time);
+            }
+        }
+    } catch (e) {
+        console.warn("[AutoVerify] Could not fetch schedule", e);
+    }
 
     // ── Seed localStorage from backend so page-switch never resets timer ──
     try {

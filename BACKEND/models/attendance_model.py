@@ -257,12 +257,14 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
 
         # ── Step 3: 30-min throttle — check auto_verify_log (NOT attendance) ──
         cursor.execute("""
-            SELECT check_time, final_status, gps_status, face_status
+            SELECT id, check_time, final_status, gps_status, face_status
             FROM auto_verify_log
             WHERE student_id = %s
             ORDER BY check_time DESC LIMIT 1
         """, (student_id,))
         last_log = cursor.fetchone()
+        
+        should_update_id = None
 
         if last_log:
             # DB check_time is naive UTC — make it UTC-aware, then compare with now_utc
@@ -304,6 +306,8 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
                         "blocked": "throttle",
                         "next_check_mins": round(30 - diff_mins, 1)
                     }
+                else:
+                    should_update_id = last_log['id']
 
         # ── Step 4: Grace period for OUTSIDE ──────────────────────────────────
         grace_timer_started_at = None
@@ -345,35 +349,49 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
             face_suffix = " | Face: MATCHED"
         remarks = f"{distance:.1f}m {dist_suffix}{grace_suffix}{face_suffix}"
 
-        # ── Step 6: Insert into auto_verify_log (admin panel) ─────────────────
-        cursor.execute("""
-            INSERT INTO auto_verify_log
-            (student_id, latitude, longitude, distance_meters, gps_status,
-             face_status, final_status, check_time)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-        """, (
-            student_id, lat, lng, distance,
-            gps_status, face_status_label, current_status
-        ))
+        # ── Step 6: Insert or Update auto_verify_log (admin panel) ────────────
+        if should_update_id:
+            cursor.execute("""
+                UPDATE auto_verify_log
+                SET latitude = %s, longitude = %s, distance_meters = %s, gps_status = %s,
+                    face_status = %s, final_status = %s, check_time = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """, (
+                lat, lng, distance, gps_status, face_status_label, current_status, should_update_id
+            ))
+        else:
+            cursor.execute("""
+                INSERT INTO auto_verify_log
+                (student_id, latitude, longitude, distance_meters, gps_status,
+                 face_status, final_status, check_time)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            """, (
+                student_id, lat, lng, distance,
+                gps_status, face_status_label, current_status
+            ))
 
         # ── Step 7: Daily summary row in attendance (one per student per day) ────
-        # auto_verify_log (Step 6) is the INSERT-only event history — new row every 30 min.
-        # attendance is the daily summary — only the FIRST write per (student, date, role) lands.
-        # ON CONFLICT DO NOTHING: never crash, never overwrite existing rows.
         face_match_col = 'success' if face_verified else 'failed'
-        cursor.execute("""
-            INSERT INTO attendance
-                (student_id, date, time, status, latitude, longitude,
-                 location_valid, face_match_status, remarks, recorded_by_role,
-                 grace_timer_started_at, grace_timer_passed, marked_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'system', %s, %s, CURRENT_TIMESTAMP)
-            ON CONFLICT (student_id, date, recorded_by_role) DO NOTHING
-        """, (
-            student_id, current_date, now.strftime("%H:%M:%S"),
-            current_status, lat, lng,
-            bool(is_inside), face_match_col, remarks,
-            grace_timer_started_at, grace_timer_passed
-        ))
+        if should_update_id and current_status == 'present':
+            cursor.execute("""
+                UPDATE attendance
+                SET status = 'present', face_match_status = %s, remarks = %s, marked_at = CURRENT_TIMESTAMP
+                WHERE student_id = %s AND date = %s AND recorded_by_role = 'system'
+            """, (face_match_col, remarks, student_id, current_date))
+        else:
+            cursor.execute("""
+                INSERT INTO attendance
+                    (student_id, date, time, status, latitude, longitude,
+                     location_valid, face_match_status, remarks, recorded_by_role,
+                     grace_timer_started_at, grace_timer_passed, marked_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'system', %s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (student_id, date, recorded_by_role) DO NOTHING
+            """, (
+                student_id, current_date, now.strftime("%H:%M:%S"),
+                current_status, lat, lng,
+                bool(is_inside), face_match_col, remarks,
+                grace_timer_started_at, grace_timer_passed
+            ))
 
 
         conn.commit()
