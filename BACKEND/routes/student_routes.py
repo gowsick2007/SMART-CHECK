@@ -42,7 +42,11 @@ from BACKEND.middleware.auth_middleware import require_auth
 @location_bp.route("/save-boundary-location", methods=["POST"])
 @location_bp.route("/confirm_boundary", methods=["POST"])
 @student_bp.route("/update-location", methods=["POST"])
-def save_boundary():
+@require_auth
+def save_boundary(current_student=None):
+    if current_student.get("role") not in ["admin", "creator"]:
+        return jsonify({"success": False, "message": "Unauthorized: Only administrators can set boundaries."}), 403
+    
     print("Boundary route reached")
     from flask import request, jsonify
     data = request.get_json() or {}

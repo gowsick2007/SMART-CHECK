@@ -96,24 +96,55 @@ async function exportHistoryCSV() {
         return;
     }
     
-    let csv = "Date,Time,Type,Boundary,Face Match,Distance,Status\n";
+    // Fetch summary to get attendance percentage
+    const user = JSON.parse(localStorage.getItem('sat_student') || '{}');
+    const token = localStorage.getItem('sat_token');
+    let attPct = '0';
+    
+    try {
+        const res = await fetch(`/api/attendance/summary?student_id=${user.student_id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && data.summary) {
+            attPct = data.summary.percentage || '0';
+        }
+    } catch (err) {
+        console.error("Failed to fetch percentage for export:", err);
+    }
+    
+    const uName = `"${user.name || ''}"`;
+    const uSid = `"${user.student_id || ''}"`;
+    const uDept = `"${user.department || ''}"`;
+    const uSec = `"${user.class_name || ''}"`;
+    const uEmail = `"${user.email || ''}"`;
+
+    let csv = "Student Name,Student ID,Department,Section,Email,Attendance Percentage,Date,Time,Boundary Status,Face Match Status,Distance,Attendance Status\n";
     window.studentHistoryRecords.forEach(rec => {
-        const date = rec.date || '—';
-        const time = rec.time || '—';
-        const type = rec.type || 'Auto Verified';
-        const isInside = (rec.boundary === 'inside' || rec.location_valid === true || rec.location_valid === 1) ? 'INSIDE' : 'OUTSIDE';
-        const faceMatched = (rec.face_match === 'success' || rec.face_match === 'match' || rec.face_match_status === 'success' || rec.face_match_status === 'match') ? 'Matched' : '—';
-        const distance = rec.distance || '—';
+        const date = `"${rec.date || '—'}"`;
+        const time = `"${rec.time || '—'}"`;
+        const isInside = (rec.boundary === 'inside' || rec.location_valid === true || rec.location_valid === 1 || String(rec.remarks).includes('INSIDE')) ? 'Inside' : 'Outside';
+        const faceMatched = (rec.face_match === 'success' || rec.face_match === 'match' || rec.face_match_status === 'success' || rec.face_match_status === 'match' || String(rec.remarks).includes('MATCHED')) ? 'Matched' : '—';
+        
+        let distance = '—';
+        if (rec.remarks) {
+            const match = String(rec.remarks).match(/([0-9.]+)m/);
+            if (match) distance = `${match[1]} m`;
+        } else if (rec.distance) {
+            distance = `${parseFloat(rec.distance).toFixed(1)} m`;
+        }
+
         const status = (rec.status || 'absent').toUpperCase();
         
-        // Escape quotes if needed, though simple data here
-        csv += `"${date}","${time}","${type}","${isInside}","${faceMatched}","${distance}","${status}"\n`;
+        csv += `${uName},${uSid},${uDept},${uSec},${uEmail},"${attPct}%",${date},${time},"${isInside}","${faceMatched}","${distance}","${status}"\n`;
     });
     
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('href', url);
-    a.setAttribute('download', 'my_attendance_history.csv');
+    a.setAttribute('download', 'My_Attendance_History.csv');
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
 }

@@ -69,6 +69,14 @@ document.addEventListener("DOMContentLoaded", function () {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const el = document.getElementById('admin-name');
       if (el && user.name) el.textContent = user.name;
+      
+      // Proactively request location for Admin boundary control if not already prompted
+      if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+              (pos) => console.log("Admin location accessible:", pos.coords.latitude, pos.coords.longitude),
+              (err) => console.warn("Admin location denied or unavailable:", err.message)
+          );
+      }
   } catch (_) {}
 
   loadSectionData("overview");
@@ -248,7 +256,7 @@ async function markAttendance(studentId, name, status) {
         const data = await res.json();
         console.log("Data Loaded:", data);
         if (data.success) {
-            showToast(`✓ ${name} marked as ${status.toUpperCase()}`, 'success');
+            showSuccessToast("Attendance marked successfully.");
             loadBoundaryStatus();
             loadOverviewStats();
         } else {
@@ -492,3 +500,62 @@ async function submitManualAttendance(status) {
     }
 }
 window.submitManualAttendance = submitManualAttendance;
+
+// ── Export Details ─────────────────────────────────────────────
+
+function exportAdminDetails() {
+    if (typeof _attendanceData === 'undefined' || !_attendanceData || _attendanceData.length === 0) {
+        showWarningToast("No attendance data loaded to export. Please refresh or load data first.");
+        return;
+    }
+
+    const q = (document.getElementById('att-search')?.value || '').toLowerCase();
+    const status = (document.getElementById('att-status-filter')?.value || '').toLowerCase();
+
+    const filtered = _attendanceData.filter(r => {
+        const nameMatch = !q || (r.name || '').toLowerCase().includes(q) || (r.student_id || '').toLowerCase().includes(q);
+        const statusMatch = !status || (r.status || '').toLowerCase() === status;
+        return nameMatch && statusMatch;
+    });
+
+    if (filtered.length === 0) {
+        showWarningToast("No records match current filters.");
+        return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    // Required: Student Name, Student ID, Department, Section, Attendance Percentage, Date, Time, Boundary Status, Face Match Status, Distance, Attendance Status, Recorded By
+    csvContent += "Student Name,Student ID,Department,Section,Attendance Percentage,Date,Time,Boundary Status,Face Match Status,Distance,Attendance Status,Recorded By\n";
+
+    filtered.forEach(r => {
+        const name = `"${r.name || ''}"`;
+        const sid = `"${r.student_id || ''}"`;
+        const dept = `"${r.department || ''}"`;
+        const sec = `"${r.class_name || ''}"`;
+        const attPct = `"${r.attendance_percentage || '0'}%"`;
+        const date = `"${r.date || ''}"`;
+        const time = `"${r.time || ''}"`;
+        const boundaryStatus = `"${(r.location_valid === true) ? 'Inside' : (r.location_valid === false ? 'Outside' : 'Unknown')}"`;
+        const faceStatus = `"${(r.face_match_status || '').toUpperCase()}"`;
+        
+        let dist = "—";
+        if (r.remarks) {
+            const match = r.remarks.match(/([0-9.]+)m/);
+            if (match) dist = `"${match[1]} m"`;
+        }
+        
+        const st = `"${(r.status || 'absent').toUpperCase()}"`;
+        const rb = `"${r.recorded_by_role || 'system'}"`;
+        
+        csvContent += `${name},${sid},${dept},${sec},${attPct},${date},${time},${boundaryStatus},${faceStatus},${dist},${st},${rb}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Admin_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+window.exportAdminDetails = exportAdminDetails;

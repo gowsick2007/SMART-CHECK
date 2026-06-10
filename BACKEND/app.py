@@ -13,7 +13,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 
 from BACKEND.config.server_config import DevelopmentConfig
@@ -1262,13 +1262,28 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         section = request.args.get("section")
         sort = request.args.get("sort", "A-Z")
         
+        # We need ALL students if we want a complete report, or just the logs?
+        # The user wants "Export Details" to include ALL students (and their attendance for a specific date or today).
+        # Let's start by getting all logs for today, but also join with a summary to get percentages.
+        
         query = """
-            SELECT a.student_id, s.name, a.date, a.time, a.status,
+            WITH StudentStats AS (
+                SELECT 
+                    student_id,
+                    COUNT(*) as total_days,
+                    SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_days
+                FROM attendance
+                GROUP BY student_id
+            )
+            SELECT a.student_id, s.name, s.email, a.date, a.time, a.status,
                    COALESCE(a.recorded_by_role, 'system') as recorded_by_role,
-                   a.marked_at, s.department, s.class_name
-            FROM attendance a
-            JOIN students s ON a.student_id = s.student_id
-            WHERE a.date = CURRENT_DATE
+                   a.marked_at, s.department, s.class_name,
+                   a.face_match_status, a.location_valid, a.remarks,
+                   ROUND((COALESCE(stats.present_days, 0)::numeric / NULLIF(stats.total_days, 1)::numeric) * 100, 2) as attendance_percentage
+            FROM students s
+            LEFT JOIN attendance a ON s.student_id = a.student_id AND a.date = CURRENT_DATE
+            LEFT JOIN StudentStats stats ON s.student_id = stats.student_id
+            WHERE s.role NOT IN ('creator', 'admin') AND s.is_active = 1
         """
         params = []
         if dept:
@@ -1279,15 +1294,15 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             params.append(section)
             
         if sort == "Z-A":
-            query += " ORDER BY s.name DESC, a.marked_at DESC NULLS LAST"
+            query += " ORDER BY s.name DESC"
         elif sort == "Roll-A-Z":
-            query += " ORDER BY s.student_id ASC, a.marked_at DESC NULLS LAST"
+            query += " ORDER BY s.student_id ASC"
         elif sort == "Roll-Z-A":
-            query += " ORDER BY s.student_id DESC, a.marked_at DESC NULLS LAST"
+            query += " ORDER BY s.student_id DESC"
         else:
-            query += " ORDER BY a.marked_at DESC NULLS LAST"
+            query += " ORDER BY s.name ASC"
             
-        query += " LIMIT 500"
+        query += " LIMIT 1000"
         records = execute_query(query, tuple(params), fetch="all") or []
         import datetime
         for r in records:
@@ -1297,6 +1312,11 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
                 r["date"] = r["date"].strftime("%Y-%m-%d")
             if r.get("time") and hasattr(r["time"], "strftime"):
                 r["time"] = r["time"].strftime("%H:%M:%S")
+            # If no attendance for today, set defaults
+            if r.get("status") is None:
+                r["status"] = "absent"
+            if r.get("attendance_percentage") is None:
+                r["attendance_percentage"] = 0
         return jsonify({"success": True, "records": records})
 
     # ── Serve static assets (css/js) ──────────────────────────

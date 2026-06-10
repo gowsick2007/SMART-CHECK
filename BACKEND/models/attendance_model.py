@@ -110,7 +110,7 @@ class AttendanceModel:
 
     @staticmethod
     def get_summary(student_id):
-        """Get attendance count summary (present/absent/late) for a student."""
+        """Get attendance count summary (present/absent/late) for a student, along with analytics, predictions and alerts."""
         query = """
             SELECT
                 COUNT(*) AS total,
@@ -120,7 +120,61 @@ class AttendanceModel:
             FROM attendance
             WHERE student_id = %s
         """
-        return execute_query(query, (student_id,), fetch="one")
+        summary = execute_query(query, (student_id,), fetch="one")
+        if not summary:
+            return summary
+
+        total = summary["total"] or 0
+        present = summary["present_count"] or 0
+        
+        percentage = round((present / total * 100), 2) if total > 0 else 0
+        
+        low_attendance_risk = percentage < 75.0 and total > 0
+        shortage_count = 0
+        if low_attendance_risk:
+            # required_classes / (total + required_classes) = 0.75
+            # required_classes = 3 * total - 4 * present
+            shortage_count = max(0, int(3 * total - 4 * present))
+
+        # Check continuous absent
+        recent_history = execute_query(
+            "SELECT status FROM attendance WHERE student_id = %s ORDER BY date DESC, time DESC",
+            (student_id,), fetch="all"
+        )
+        continuous_absent = 0
+        if recent_history:
+            for r in recent_history:
+                if r['status'] == 'absent':
+                    continuous_absent += 1
+                else:
+                    break
+
+        parent_alert = None
+        if (percentage < 75.0 and total > 0) or continuous_absent >= 3:
+            reasons = []
+            if percentage < 75.0 and total > 0:
+                reasons.append(f"attendance is {percentage}% (<75%)")
+            if continuous_absent >= 3:
+                reasons.append(f"absent {continuous_absent} consecutive times")
+            parent_alert = f"PARENT ALERT: Student {' and '.join(reasons)}."
+
+        # Fetch department & section
+        student_info = execute_query(
+            "SELECT department, class_name FROM students WHERE student_id = %s",
+            (student_id,), fetch="one"
+        )
+        dept = student_info["department"] if student_info else "N/A"
+        section = student_info["class_name"] if student_info else "N/A"
+
+        summary["percentage"] = percentage
+        summary["low_attendance_risk"] = low_attendance_risk
+        summary["shortage_count"] = shortage_count
+        summary["continuous_absent"] = continuous_absent
+        summary["parent_alert"] = parent_alert
+        summary["department"] = dept
+        summary["section"] = section
+
+        return summary
 
     # FIX 3: update_status() REMOVED — all writes must be INSERT-only.
     # Do NOT re-add an UPDATE here. To correct a record, INSERT a new row.
