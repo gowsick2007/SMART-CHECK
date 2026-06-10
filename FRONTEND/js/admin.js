@@ -525,8 +525,8 @@ function exportAdminDetails() {
     }
 
     let csvContent = "";
-    // Required: Student Name, Student ID, Department, Section, Attendance Percentage, Date, Time, Boundary Status, Face Match Status, Distance, Attendance Status, Recorded By
-    const headers = ["Student Name", "Student ID", "Department", "Section", "Attendance Percentage", "Date", "Time", "Boundary Status", "Face Match Status", "Distance", "Attendance Status", "Recorded By"];
+    // Required 13 Columns: Student Name, Roll/Student ID, Department, Section, Email, Attendance Percentage, Date, Time, Status, Face Match, Boundary Status, Distance, Recorded By
+    const headers = ["Student Name", "Roll/Student ID", "Department", "Section", "Email", "Attendance Percentage", "Date", "Time", "Status", "Face Match", "Boundary Status", "Distance", "Recorded By"];
     csvContent += headers.join(",") + "\n";
 
     filtered.forEach(r => {
@@ -535,13 +535,14 @@ function exportAdminDetails() {
             `"${r.student_id || ''}"`,
             `"${r.department || ''}"`,
             `"${r.class_name || ''}"`,
+            `"${r.email || ''}"`,
             `"${r.attendance_percentage || '0'}%"`,
             `"${r.date || ''}"`,
             `"${r.time || '—'}"`,
-            `"${(r.location_valid === true) ? 'Inside' : (r.location_valid === false ? 'Outside' : 'Unknown')}"`,
-            `"${(r.face_match_status || '—').toUpperCase()}"`,
-            `"${r.remarks ? (r.remarks.match(/([0-9.]+)m/) ? r.remarks.match(/([0-9.]+)m/)[1] + ' m' : '—') : '—'}"`,
             `"${(r.status || 'absent').toUpperCase()}"`,
+            `"${(r.face_match_status || '—').toUpperCase()}"`,
+            `"${(r.location_valid === true) ? 'Inside' : (r.location_valid === false ? 'Outside' : 'Unknown')}"`,
+            `"${r.remarks ? (r.remarks.match(/([0-9.]+)m/) ? r.remarks.match(/([0-9.]+)m/)[1] + ' m' : '—') : '—'}"`,
             `"${r.recorded_by_role || 'system'}"`
         ];
         csvContent += row.join(",") + "\n";

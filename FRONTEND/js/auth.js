@@ -125,8 +125,11 @@ async function handleLogin(event) {
       localStorage.removeItem('locationVerified');
 
       // Role-based redirection using absolute, cleaner URL endpoints
-      if (actualRole === 'creator' || actualRole === 'admin') {
-        console.log("Redirecting Admin/Creator to Location Setup:", "/location");
+      if (actualRole === 'creator') {
+        console.log("Redirecting Creator to:", "/creator-dashboard");
+        window.location.href = '/creator-dashboard';
+      } else if (actualRole === 'admin') {
+        console.log("Redirecting Admin to Location Setup:", "/location");
         window.location.href = '/location';
       } else {
         console.log("Redirecting Student to Dashboard:", "/dashboard");
@@ -259,7 +262,7 @@ function requireAuth() {
 
     // Protect Dashboard from access before location verification (Admin Only)
     const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('role') || 'student';
-    if ((userRole === 'admin' || userRole === 'creator') && (path.includes("/dashboard") || path === "/dashboard.html") && !locationVerified) {
+    if (userRole === 'admin' && (path.includes("/dashboard") || path === "/dashboard.html") && !locationVerified) {
       console.log("Guard redirect: Admin has not verified/set location yet.");
       window.location.href = "/location";
       return false;
