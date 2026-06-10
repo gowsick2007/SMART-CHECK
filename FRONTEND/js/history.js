@@ -139,12 +139,15 @@ async function exportHistoryCSV() {
         csv += `${uName},${uSid},${uDept},${uSec},${uEmail},"${attPct}%",${date},${time},"${isInside}","${faceMatched}","${distance}","${status}"\n`;
     });
     
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.setAttribute('href', url);
-    a.setAttribute('download', 'My_Attendance_History.csv');
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    if (a.download !== undefined) {
+        a.setAttribute('href', url);
+        a.setAttribute('download', 'My_Attendance_History.csv');
+        a.style.visibility = 'hidden';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
 }

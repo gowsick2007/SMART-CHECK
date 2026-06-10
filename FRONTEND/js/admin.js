@@ -512,6 +512,7 @@ function exportAdminDetails() {
     const q = (document.getElementById('att-search')?.value || '').toLowerCase();
     const status = (document.getElementById('att-status-filter')?.value || '').toLowerCase();
 
+    // Use ALL data from the backend report (which already includes filtered/sorted students)
     const filtered = _attendanceData.filter(r => {
         const nameMatch = !q || (r.name || '').toLowerCase().includes(q) || (r.student_id || '').toLowerCase().includes(q);
         const statusMatch = !status || (r.status || '').toLowerCase() === status;
@@ -523,39 +524,39 @@ function exportAdminDetails() {
         return;
     }
 
-    let csvContent = "data:text/csv;charset=utf-8,";
+    let csvContent = "";
     // Required: Student Name, Student ID, Department, Section, Attendance Percentage, Date, Time, Boundary Status, Face Match Status, Distance, Attendance Status, Recorded By
-    csvContent += "Student Name,Student ID,Department,Section,Attendance Percentage,Date,Time,Boundary Status,Face Match Status,Distance,Attendance Status,Recorded By\n";
+    const headers = ["Student Name", "Student ID", "Department", "Section", "Attendance Percentage", "Date", "Time", "Boundary Status", "Face Match Status", "Distance", "Attendance Status", "Recorded By"];
+    csvContent += headers.join(",") + "\n";
 
     filtered.forEach(r => {
-        const name = `"${r.name || ''}"`;
-        const sid = `"${r.student_id || ''}"`;
-        const dept = `"${r.department || ''}"`;
-        const sec = `"${r.class_name || ''}"`;
-        const attPct = `"${r.attendance_percentage || '0'}%"`;
-        const date = `"${r.date || ''}"`;
-        const time = `"${r.time || ''}"`;
-        const boundaryStatus = `"${(r.location_valid === true) ? 'Inside' : (r.location_valid === false ? 'Outside' : 'Unknown')}"`;
-        const faceStatus = `"${(r.face_match_status || '').toUpperCase()}"`;
-        
-        let dist = "—";
-        if (r.remarks) {
-            const match = r.remarks.match(/([0-9.]+)m/);
-            if (match) dist = `"${match[1]} m"`;
-        }
-        
-        const st = `"${(r.status || 'absent').toUpperCase()}"`;
-        const rb = `"${r.recorded_by_role || 'system'}"`;
-        
-        csvContent += `${name},${sid},${dept},${sec},${attPct},${date},${time},${boundaryStatus},${faceStatus},${dist},${st},${rb}\n`;
+        const row = [
+            `"${r.name || ''}"`,
+            `"${r.student_id || ''}"`,
+            `"${r.department || ''}"`,
+            `"${r.class_name || ''}"`,
+            `"${r.attendance_percentage || '0'}%"`,
+            `"${r.date || ''}"`,
+            `"${r.time || '—'}"`,
+            `"${(r.location_valid === true) ? 'Inside' : (r.location_valid === false ? 'Outside' : 'Unknown')}"`,
+            `"${(r.face_match_status || '—').toUpperCase()}"`,
+            `"${r.remarks ? (r.remarks.match(/([0-9.]+)m/) ? r.remarks.match(/([0-9.]+)m/)[1] + ' m' : '—') : '—'}"`,
+            `"${(r.status || 'absent').toUpperCase()}"`,
+            `"${r.recorded_by_role || 'system'}"`
+        ];
+        csvContent += row.join(",") + "\n";
     });
 
-    const encodedUri = encodeURI(csvContent);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Admin_Export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Admin_Export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 }
 window.exportAdminDetails = exportAdminDetails;

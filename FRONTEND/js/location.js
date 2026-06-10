@@ -132,7 +132,7 @@ async function saveBoundaryLocation() {
             localStorage.setItem('boundaryLng', selectedLng);
             
             // Continue to dashboard properly via absolute route
-            window.location.href = '/dashboard';
+            window.location.href = '/admin-dashboard';
         } else {
             await showErrorToast(data.message || "Failed to save location");
         }

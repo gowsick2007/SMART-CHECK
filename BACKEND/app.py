@@ -1262,10 +1262,8 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         section = request.args.get("section")
         sort = request.args.get("sort", "A-Z")
         
-        # We need ALL students if we want a complete report, or just the logs?
-        # The user wants "Export Details" to include ALL students (and their attendance for a specific date or today).
-        # Let's start by getting all logs for today, but also join with a summary to get percentages.
-        
+        # Comprehensive query joined with stats for attendance percentage
+        # We use LEFT JOIN on attendance to include students who haven't marked today
         query = """
             WITH StudentStats AS (
                 SELECT 
@@ -1275,10 +1273,10 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
                 FROM attendance
                 GROUP BY student_id
             )
-            SELECT a.student_id, s.name, s.email, a.date, a.time, a.status,
+            SELECT a.student_id, s.name, s.email, a.date, a.time, s.department, s.class_name,
+                   COALESCE(a.status, 'absent') as status,
                    COALESCE(a.recorded_by_role, 'system') as recorded_by_role,
-                   a.marked_at, s.department, s.class_name,
-                   a.face_match_status, a.location_valid, a.remarks,
+                   a.marked_at, a.face_match_status, a.location_valid, a.remarks,
                    ROUND((COALESCE(stats.present_days, 0)::numeric / NULLIF(stats.total_days, 1)::numeric) * 100, 2) as attendance_percentage
             FROM students s
             LEFT JOIN attendance a ON s.student_id = a.student_id AND a.date = CURRENT_DATE
@@ -1293,16 +1291,17 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             query += " AND s.class_name = %s"
             params.append(section)
             
+        # Sorting maps
         if sort == "Z-A":
             query += " ORDER BY s.name DESC"
-        elif sort == "Roll-A-Z":
+        elif sort == "Roll-A-Z" or sort == "ID-A-Z":
             query += " ORDER BY s.student_id ASC"
-        elif sort == "Roll-Z-A":
+        elif sort == "Roll-Z-A" or sort == "ID-Z-A":
             query += " ORDER BY s.student_id DESC"
         else:
             query += " ORDER BY s.name ASC"
             
-        query += " LIMIT 1000"
+        query += " LIMIT 2000"
         records = execute_query(query, tuple(params), fetch="all") or []
         import datetime
         for r in records:
@@ -1310,13 +1309,18 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
                 r["marked_at"] = r["marked_at"].strftime("%Y-%m-%d %H:%M:%S")
             if r.get("date") and hasattr(r["date"], "strftime"):
                 r["date"] = r["date"].strftime("%Y-%m-%d")
+            else:
+                # If no record today, show current date for reporting context if needed
+                r["date"] = datetime.date.today().strftime("%Y-%m-%d")
+                
             if r.get("time") and hasattr(r["time"], "strftime"):
                 r["time"] = r["time"].strftime("%H:%M:%S")
-            # If no attendance for today, set defaults
-            if r.get("status") is None:
-                r["status"] = "absent"
+            elif not r.get("time"):
+                r["time"] = "—"
+                
             if r.get("attendance_percentage") is None:
                 r["attendance_percentage"] = 0
+                
         return jsonify({"success": True, "records": records})
 
     # ── Serve static assets (css/js) ──────────────────────────

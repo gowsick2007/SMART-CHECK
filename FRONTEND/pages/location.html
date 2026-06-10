@@ -227,7 +227,11 @@
   </script>
   
   <script>
-    // ── Guard: redirect if not logged in ─────────────────────────
+    // ── Guard: redirect if not logged in or NOT admin ─────────────────────────
+    const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('role') || 'student';
+    if (userRole === 'student') {
+        window.location.href = '/dashboard';
+    }
     requireAuth();
 
     function requestLocationPermission() {
