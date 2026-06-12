@@ -1,7 +1,8 @@
 from flask import Blueprint
 from BACKEND.controllers.smart_analytics_controller import (
     get_smart_summary, get_trust_scores, get_late_arrivals,
-    get_fraud_alerts, get_attendance_forecast, ask_ai_assistant
+    get_fraud_alerts, get_attendance_forecast, ask_ai_assistant,
+    get_smart_achievements
 )
 from BACKEND.middleware.auth_middleware import require_role
 
@@ -38,3 +39,8 @@ def api_attendance_forecast(student_id, current_student=None):
 @require_role(['admin', 'creator'])
 def api_ai_assistant(current_student=None):
     return ask_ai_assistant()
+
+@smart_analytics_bp.route('/api/smart/achievements', methods=['GET'])
+@require_role(['admin', 'creator'])
+def api_achievements(current_student=None):
+    return get_smart_achievements()

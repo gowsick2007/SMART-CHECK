@@ -32,6 +32,29 @@ async function loadLiveStats() {
             document.getElementById('hub-face').textContent = data.stats.face_verified || 0;
             document.getElementById('hub-inside').textContent = data.stats.inside_boundary || 0;
             renderOccupancy(data.occupancy);
+
+            // Render GPS Analytics into the Fraud/GPS card header or top
+            const gpsBody = document.getElementById('smart-fraud-alerts');
+            if (data.gps_analytics) {
+                const g = data.gps_analytics;
+                let gpsHtml = `
+                    <div style="background:rgba(0,153,255,0.1); border:1px solid rgba(0,153,255,0.2); border-radius:8px; padding:10px; margin-bottom:12px; font-size:11px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                            <span>Boundary Edge Attempts:</span> <strong>${g.edge_attempts}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                            <span>Outside Boundary Attempts:</span> <strong>${g.outside_attempts}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span>GPS Consistency Score:</span> <strong>${g.avg_distance}m avg</strong>
+                        </div>
+                    </div>
+                `;
+                // Prepends to the alerts container
+                const existing = gpsBody.querySelector('.gps-analytics-strip');
+                if (existing) existing.remove();
+                gpsBody.insertAdjacentHTML('afterbegin', `<div class="gps-analytics-strip">${gpsHtml}</div>`);
+            }
         }
     } catch (err) {
         console.error("Live Stats Error:", err);
@@ -124,7 +147,6 @@ async function loadLateArrivals() {
 
 async function loadForecast() {
     try {
-        // Fetch forecast for a sample student or aggregate
         const res = await fetch(`${API_BASE}/api/smart/trust-scores`, { headers: authHeaders() });
         const data = await res.json();
         if (data.success && data.scores.length > 0) {
@@ -132,8 +154,14 @@ async function loadForecast() {
             const fRes = await fetch(`${API_BASE}/api/smart/forecast/${top.student_id}`, { headers: authHeaders() });
             const fData = await fRes.json();
             if (fData.success) {
-                document.getElementById('smart-forecast-info').textContent = 
-                    `${fData.forecast_10_days_present}% Expected turnout for ${top.name} (Upcoming 10 Days)`;
+                document.getElementById('smart-forecast-info').innerHTML = `
+                    <div style="color:#00ffcc;">${top.name}</div>
+                    <div style="font-size:11px; opacity:0.7;">
+                        If Present: <strong>${fData.forecast_10_days_present}%</strong> (next 10d)<br>
+                        If Absent: <strong>${fData.forecast_10_days_absent}%</strong> (next 10d)<br>
+                        Exam Risk (3d Abs): <strong>${fData.prediction_3_days_absent}%</strong>
+                    </div>
+                `;
             }
         }
     } catch (err) {}
@@ -145,14 +173,22 @@ async function loadAchievements() {
         const data = await res.json();
         if (data.success) {
             const chamber = document.querySelector('.badge-chamber');
-            const perfectNames = data.achievements.perfect_score.map(s => s.name).join(', ');
-            const champNames = data.achievements.on_time_champs.map(s => s.name).join(', ');
+            // Clean up existing dynamic text if any
+            const existingLabels = chamber.parentElement.querySelectorAll('.dynamic-achievement');
+            existingLabels.forEach(el => el.remove());
+
+            const perfectNames = data.achievements.perfect_score.map(s => s.name).slice(0,2).join(', ');
+            const highNames = data.achievements.high_attendancy.map(s => s.name).slice(0,2).join(', ');
+            const streakNames = data.achievements.streaks.map(s => s.name).slice(0,2).join(', ');
             
             if (perfectNames) {
-                chamber.innerHTML += `<div style="font-size:10px; color:gold; margin-top:5px;">100% Club: ${perfectNames}</div>`;
+                chamber.insertAdjacentHTML('afterend', `<div class="dynamic-achievement" style="font-size:10px; color:gold; margin-top:5px;">100% Club: ${perfectNames}+</div>`);
             }
-            if (champNames) {
-                chamber.innerHTML += `<div style="font-size:10px; color:#00ffcc; margin-top:5px;">On-Time Champs: ${champNames}</div>`;
+            if (highNames) {
+                chamber.insertAdjacentHTML('afterend', `<div class="dynamic-achievement" style="font-size:10px; color:#38ef7d; margin-top:5px;">95% Club: ${highNames}+</div>`);
+            }
+            if (streakNames) {
+                chamber.insertAdjacentHTML('afterend', `<div class="dynamic-achievement" style="font-size:10px; color:#ff9f43; margin-top:5px;">30-Day Streaks: ${streakNames}+</div>`);
             }
         }
     } catch (err) {}

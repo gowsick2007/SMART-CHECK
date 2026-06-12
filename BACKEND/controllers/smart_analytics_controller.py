@@ -12,10 +12,10 @@ def get_smart_summary():
     stats = execute_query("""
         SELECT 
             COUNT(*) FILTER (WHERE status = 'present') as total_present,
-            COUNT(*) FILTER (WHERE status = 'absent') as total_absent,
-            COUNT(*) FILTER (WHERE face_match_status = 'success' OR face_match_status = 'Matched') as face_verified,
-            COUNT(*) FILTER (WHERE location_valid = true OR boundary = 'inside') as inside_boundary,
-            COUNT(*) FILTER (WHERE location_valid = false OR boundary = 'outside') as outside_boundary
+            COUNT(*) FILTER (WHERE status = 'absent' OR status IS NULL) as total_absent,
+            COUNT(*) FILTER (WHERE face_match_status = 'success') as face_verified,
+            COUNT(*) FILTER (WHERE location_valid = true) as inside_boundary,
+            COUNT(*) FILTER (WHERE location_valid = false AND status = 'present') as outside_boundary
         FROM attendance
         WHERE date = %s
     """, (today,), fetch="one") or {"total_present":0, "total_absent":0, "face_verified":0, "inside_boundary":0, "outside_boundary":0}
@@ -32,10 +32,21 @@ def get_smart_summary():
         ORDER BY s.department, s.class_name
     """, (today,), fetch="all") or []
 
+    # 7. GPS Analytics (New)
+    gps_analytics = execute_query("""
+        SELECT 
+            COUNT(*) FILTER (WHERE gps_status = 'outside') as outside_attempts,
+            COUNT(*) FILTER (WHERE distance_meters > 50 AND distance_meters < 65) as edge_attempts,
+            ROUND(AVG(distance_meters)::numeric, 1) as avg_distance
+        FROM auto_verify_log
+        WHERE DATE(check_time) = %s
+    """, (today,), fetch="one") or {"outside_attempts":0, "edge_attempts":0, "avg_distance":0}
+
     return jsonify({
         "success": True,
         "stats": stats,
-        "occupancy": occupancy
+        "occupancy": occupancy,
+        "gps_analytics": gps_analytics
     })
 
 def get_trust_scores():
@@ -48,8 +59,8 @@ def get_trust_scores():
                 student_id,
                 COUNT(*) as total_days,
                 SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_days,
-                SUM(CASE WHEN face_match_status IN ('success', 'Matched') THEN 1 ELSE 0 END) as face_matches,
-                SUM(CASE WHEN location_valid = true OR boundary = 'inside' THEN 1 ELSE 0 END) as inside_checks
+                SUM(CASE WHEN face_match_status = 'success' THEN 1 ELSE 0 END) as face_matches,
+                SUM(CASE WHEN location_valid = true THEN 1 ELSE 0 END) as inside_checks
             FROM attendance
             GROUP BY student_id
         )
@@ -94,6 +105,8 @@ def get_late_arrivals(period='daily'):
         query += " AND a.date = CURRENT_DATE"
     elif period == 'weekly':
         query += " AND a.date >= CURRENT_DATE - INTERVAL '7 days'"
+    elif period == 'monthly':
+        query += " AND a.date >= CURRENT_DATE - INTERVAL '30 days'"
     
     records = execute_query(query, tuple(params), fetch="all") or []
     
@@ -156,6 +169,24 @@ def get_fraud_alerts():
             "details": f"Marked present outside boundary {o['out_count']} times in a week."
         })
 
+    # Check Boundary Abuse Attempts (Too many outside logs)
+    boundary_abuse = execute_query("""
+        SELECT student_id, COUNT(*) as attempt_count
+        FROM auto_verify_log
+        WHERE gps_status = 'outside'
+          AND check_time >= CURRENT_DATE - INTERVAL '2 days'
+        GROUP BY student_id
+        HAVING COUNT(*) >= 10
+    """, fetch="all") or []
+
+    for b in boundary_abuse:
+        alerts.append({
+            "type": "Boundary Abuse Attempt",
+            "student_id": b["student_id"],
+            "severity": "Critical",
+            "details": f"Detected {b['attempt_count']} outside boundary attempts in last 48h."
+        })
+
     return jsonify({"success": True, "alerts": alerts})
 
 def get_attendance_forecast(student_id):
@@ -179,11 +210,15 @@ def get_attendance_forecast(student_id):
     scenario_10p = ((present + 10) / (total + 10)) * 100
     scenario_10a = (present / (total + 10)) * 100
     
+    # Prediction logic: If absent next 3 days
+    scenario_3a = (present / (total + 3)) * 100
+    
     return jsonify({
         "success": True,
         "current_percentage": round(current_pct, 2),
         "forecast_10_days_present": round(scenario_10p, 2),
-        "forecast_10_days_absent": round(scenario_10a, 2)
+        "forecast_10_days_absent": round(scenario_10a, 2),
+        "prediction_3_days_absent": round(scenario_3a, 2)
     })
 
 def ask_ai_assistant():
@@ -232,3 +267,60 @@ def ask_ai_assistant():
         return jsonify({"success": True, "answer": f"There are {len(res)} students currently at high risk for exam eligibility."})
     
     return jsonify({"success": True, "answer": "I'm sorry, I don't have enough data to answer that specific query yet. Try asking about 'lowest attendance', 'students below 75%', or 'exam eligibility'."})
+
+def get_smart_achievements():
+    """7. Achievement System (Streaks & Badges)"""
+    # 100% Club
+    perfect = execute_query("""
+        SELECT name, student_id FROM (
+            SELECT s.name, s.student_id, AVG(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as avg_att
+            FROM attendance a JOIN students s ON a.student_id = s.student_id
+            GROUP BY s.name, s.student_id
+            HAVING COUNT(*) >= 5
+        ) t WHERE avg_att = 1.0 LIMIT 5
+    """, fetch="all") or []
+
+    # On-Time Champs (No late arrivals in last 5 presents)
+    on_timers = execute_query("""
+        SELECT s.name, s.student_id FROM students s
+        WHERE NOT EXISTS (
+            SELECT 1 FROM attendance a 
+            WHERE a.student_id = s.student_id 
+            AND a.status = 'present'
+            AND (EXTRACT(EPOCH FROM (a.time::time - '09:00:00'::time))/60) > 5
+        ) AND EXISTS (SELECT 1 FROM attendance a WHERE a.student_id = s.student_id)
+        LIMIT 5
+    """, fetch="all") or []
+
+    # 95% Club
+    high_attendancy = execute_query("""
+        SELECT name, student_id FROM (
+            SELECT s.name, s.student_id, AVG(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as avg_att
+            FROM attendance a JOIN students s ON a.student_id = s.student_id
+            GROUP BY s.name, s.student_id
+            HAVING COUNT(*) >= 10
+        ) t WHERE avg_att >= 0.95 AND avg_att < 1.0 LIMIT 5
+    """, fetch="all") or []
+
+    # 30-Day Streak (Most recent 30 presents)
+    # This is a bit complex for a single SQL, but we'll approximate with last 30 entries
+    streaks = execute_query("""
+        SELECT s.name, s.student_id, COUNT(*) as streak_count
+        FROM attendance a
+        JOIN students s ON a.student_id = s.student_id
+        WHERE a.status = 'present'
+          AND a.date >= CURRENT_DATE - INTERVAL '30 days'
+        GROUP BY s.name, s.student_id
+        HAVING COUNT(*) >= 25
+        LIMIT 5
+    """, fetch="all") or []
+
+    return jsonify({
+        "success": True,
+        "achievements": {
+            "perfect_score": perfect,
+            "on_time_champs": on_timers,
+            "high_attendancy": high_attendancy,
+            "streaks": streaks
+        }
+    })
