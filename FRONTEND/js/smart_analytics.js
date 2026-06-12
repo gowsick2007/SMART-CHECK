@@ -19,6 +19,7 @@ async function initSmartDashboard() {
     await loadFraudAlerts();
     await loadLateArrivals();
     await loadForecast();
+    await loadAchievements();
 }
 
 async function loadLiveStats() {
@@ -122,10 +123,40 @@ async function loadLateArrivals() {
 }
 
 async function loadForecast() {
-    // Forecast is calculated on AI request or for a sample student for UI placeholder
-    document.getElementById('smart-forecast-info').textContent = "78% Expected turnout tomorrow based on weekly velocity.";
-} 
+    try {
+        // Fetch forecast for a sample student or aggregate
+        const res = await fetch(`${API_BASE}/api/smart/trust-scores`, { headers: authHeaders() });
+        const data = await res.json();
+        if (data.success && data.scores.length > 0) {
+            const top = data.scores[0];
+            const fRes = await fetch(`${API_BASE}/api/smart/forecast/${top.student_id}`, { headers: authHeaders() });
+            const fData = await fRes.json();
+            if (fData.success) {
+                document.getElementById('smart-forecast-info').textContent = 
+                    `${fData.forecast_10_days_present}% Expected turnout for ${top.name} (Upcoming 10 Days)`;
+            }
+        }
+    } catch (err) {}
+}
 
+async function loadAchievements() {
+    try {
+        const res = await fetch(`${API_BASE}/api/smart/achievements`, { headers: authHeaders() });
+        const data = await res.json();
+        if (data.success) {
+            const chamber = document.querySelector('.badge-chamber');
+            const perfectNames = data.achievements.perfect_score.map(s => s.name).join(', ');
+            const champNames = data.achievements.on_time_champs.map(s => s.name).join(', ');
+            
+            if (perfectNames) {
+                chamber.innerHTML += `<div style="font-size:10px; color:gold; margin-top:5px;">100% Club: ${perfectNames}</div>`;
+            }
+            if (champNames) {
+                chamber.innerHTML += `<div style="font-size:10px; color:#00ffcc; margin-top:5px;">On-Time Champs: ${champNames}</div>`;
+            }
+        }
+    } catch (err) {}
+}
 async function askAISmart() {
     const input = document.getElementById('ai-smart-query');
     const query = input.value.trim();
