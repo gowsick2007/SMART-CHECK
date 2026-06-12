@@ -260,7 +260,7 @@ async function markAttendance(studentId, name, status) {
             loadBoundaryStatus();
             loadOverviewStats();
         } else {
-            showToast(data.message || 'Failed to mark attendance', 'error');
+            showErrorToast(data.message || 'Failed to mark attendance');
         }
     } catch (err) {
         console.error('Mark attendance error:', err);
@@ -485,14 +485,14 @@ async function submitManualAttendance(status) {
         const data = await res.json();
         console.log("Data Loaded:", data);
         if (data.success) {
-            showToast(data.message, 'success');
+            showSuccessToast("Attendance marked successfully.");
             if (input) input.value = ''; 
             _selectedManualStudentId = null;
             const det = document.getElementById('manual-status-details');
             if (det) det.style.display = 'none';
             loadOverviewStats();
         } else {
-            showToast(data.message || 'Failed', 'error');
+            showErrorToast(data.message || 'Failed to mark attendance');
         }
     } catch (err) {
         console.error("Manual Attendance Error:", err);

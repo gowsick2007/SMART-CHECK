@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Command Center - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        :root {
+            --panel-bg: rgba(20, 25, 40, 0.7);
+            --smart-cyan: #00ffcc;
+            --smart-blue: #0099ff;
+            --smart-orange: #ff9f43;
+            --smart-red: #ff4d4d;
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #0a0f20, #05070a);
+            min-height: 100vh;
+        }
+
+        .command-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .smart-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .smart-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 255, 204, 0.2);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-header h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            margin: 0;
+            color: #fff;
+        }
+
+        .card-header i {
+            font-size: 1.5rem;
+            color: var(--smart-cyan);
+        }
+
+        /* Widgets Styles */
+        .live-stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .live-stat {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .live-stat .value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .live-stat .label {
+            font-size: 0.8rem;
+            opacity: 0.6;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Trust Table */
+        .trust-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .trust-table td {
+            padding: 12px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .score-pill {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .high { background: rgba(0, 255, 204, 0.15); color: #00ffcc; }
+        .medium { background: rgba(255, 159, 67, 0.15); color: #ff9f43; }
+        .low { background: rgba(255, 77, 77, 0.15); color: #ff4d4d; }
+
+        /* AI Assistant */
+        .ai-chat {
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding-right: 5px;
+        }
+
+        .msg {
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            max-width: 85%;
+            font-size: 0.95rem;
+        }
+
+        .ai-msg { background: rgba(0, 153, 255, 0.1); border-left: 3px solid var(--smart-blue); color: #e0e0e0; }
+        .user-msg { align-self: flex-end; background: rgba(255, 255, 255, 0.05); color: #fff; }
+
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px 15px;
+            color: #fff;
+            outline: none;
+        }
+
+        .chat-input button {
+            background: var(--smart-blue);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            width: 40px;
+            cursor: pointer;
+        }
+
+        /* Achievement Badges */
+        .badge-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .badge-item {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid gold;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: gold;
+            position: relative;
+        }
+
+        .badge-tooltip {
+            position: absolute;
+            bottom: -25px;
+            font-size: 0.65rem;
+            white-space: nowrap;
+            background: rgba(0,0,0,0.8);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fa-solid fa-brain"></i>
+            <span>SMART OPS</span>
+        </div>
+        <nav class="nav-menu">
+            <a href="admin_dashboard.html" class="nav-link"><i class="fa-solid fa-chart-line"></i><span>Standard Dashboard</span></a>
+            <a href="#" class="nav-link active"><i class="fa-solid fa-microchip"></i><span>Command Center</span></a>
+        </nav>
+    </div>
+
+    <main class="main-content">
+        <header class="top-bar">
+            <div class="page-title">
+                <h1>Live Attendance Command Center</h1>
+                <p>Advanced Intelligence & Fraud Detection Hub</p>
+            </div>
+            <div class="user-profile">
+                <span id="admin-name">Administrator</span>
+                <button onclick="handleLogout()" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <div class="command-grid">
+            <!-- 5. Live Attendance Command Center -->
+            <div class="smart-card" id="live-widget">
+                <div class="card-header">
+                    <h3>Live Analytics</h3>
+                    <i class="fa-solid fa-tower-broadcast"></i>
+                </div>
+                <div class="live-stat-grid">
+                    <div class="live-stat">
+                        <span class="value" id="stat-present" style="color: var(--smart-cyan)">0</span>
+                        <span class="label">Present</span>
+                    </div>
+                    <div class="live-stat">
+                        <span class="value" id="stat-absent" style="color: var(--smart-red)">0</span>
+                        <span class="label">Absent</span>
+                    </div>
+                    <div class="live-stat">
+                        <span class="value" id="stat-face" style="color: var(--smart-blue)">0</span>
+                        <span class="label">Face Verified</span>
+                    </div>
+                    <div class="live-stat">
+                        <span class="value" id="stat-boundary" style="color: var(--smart-orange)">0</span>
+                        <span class="label">Inside Range</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 1. Trust Score -->
+            <div class="smart-card">
+                <div class="card-header">
+                    <h3>Student Trust Index</h3>
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div style="max-height: 200px; overflow-y: auto;">
+                    <table class="trust-table" id="trust-table-body">
+                        <!-- Populated by JS -->
+                    </table>
+                </div>
+            </div>
+
+            <!-- 3 & 8. Fraud Alerts & GPS Patterns -->
+            <div class="smart-card">
+                <div class="card-header">
+                    <h3>Fraud Alerts</h3>
+                    <i class="fa-solid fa-triangle-exclamation" style="color: var(--smart-red)"></i>
+                </div>
+                <div id="fraud-alerts-container">
+                    <!-- Alerts -->
+                </div>
+            </div>
+
+            <!-- 6. Occupancy Monitor -->
+            <div class="smart-card">
+                <div class="card-header">
+                    <h3>Classroom Occupancy</h3>
+                    <i class="fa-solid fa-users-viewfinder"></i>
+                </div>
+                <div id="occupancy-container" style="max-height: 200px; overflow-y: auto;">
+                    <!-- Occupancy data -->
+                </div>
+            </div>
+
+            <!-- 9. AI Assistant -->
+            <div class="smart-card">
+                <div class="card-header">
+                    <h3>AI Attendance Assistant</h3>
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div class="ai-chat">
+                    <div class="chat-messages" id="ai-chat-messages">
+                        <div class="msg ai-msg">Hello! I am your Attendance AI. Ask me about risky students or occupancy stats.</div>
+                    </div>
+                    <div class="chat-input house-input">
+                        <input type="text" id="ai-query-input" placeholder="Ask anything...">
+                        <button onclick="askAI()"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. Achievement Badges -->
+            <div class="smart-card">
+                <div class="card-header">
+                    <h3>Latest Achievements</h3>
+                    <i class="fa-solid fa-medal"></i>
+                </div>
+                <div class="badge-grid">
+                    <div class="badge-item"><i class="fa-solid fa-fire"></i><span class="badge-tooltip">30-Day Streak</span></div>
+                    <div class="badge-item"><i class="fa-solid fa-star"></i><span class="badge-tooltip">100% Club</span></div>
+                    <div class="badge-item"><i class="fa-solid fa-bolt"></i><span class="badge-tooltip">On-Time Champ</span></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-container"></div>
+
+    <script src="../js/auth.js"></script>
+    <script src="../js/smart_analytics.js"></script>
+</body>
+</html>

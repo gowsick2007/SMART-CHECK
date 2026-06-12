@@ -1332,6 +1332,13 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     def serve_js(filename):
         return send_from_directory(os.path.join(FRONTEND_ROOT, "js"), filename)
 
+    # --- SMART ANALYTICS BLUEPRINT (NEW) ---
+    try:
+        from BACKEND.routes.smart_analytics_routes import smart_analytics_bp
+        app.register_blueprint(smart_analytics_bp)
+    except Exception as e:
+        print(f"Warning: Could not register smart_analytics_bp: {e}")
+
     return app
 
 
