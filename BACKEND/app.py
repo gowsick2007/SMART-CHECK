@@ -1316,7 +1316,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             if r.get("time") and hasattr(r["time"], "strftime"):
                 r["time"] = r["time"].strftime("%H:%M:%S")
             elif not r.get("time"):
-                r["time"] = "—"
+                r["time"] = "N/A"
                 
             if r.get("attendance_percentage") is None:
                 r["attendance_percentage"] = 0

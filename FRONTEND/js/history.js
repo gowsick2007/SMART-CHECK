@@ -43,8 +43,8 @@ function renderHistory(records) {
     }
 
     tbody.innerHTML = records.map(rec => {
-        const displayDate = rec.date || '—';
-        const displayTime = rec.time || '—';
+        const displayDate = rec.date || 'N/A';
+        const displayTime = rec.time || 'N/A';
         
         const type = rec.type || 'Auto Verified';
         let typeHtml = `<span>${type}</span>`;
@@ -53,7 +53,7 @@ function renderHistory(records) {
         const isInside = rec.boundary === 'inside' || rec.location_valid === true || rec.location_valid === 1;
         const faceMatched = rec.face_match === 'success' || rec.face_match === 'match' || rec.face_match_status === 'success' || rec.face_match_status === 'match';
         
-        let distanceVal = rec.distance || '—';
+        let distanceVal = rec.distance || 'N/A';
         // Removed override to allow specific 'Manual attendance + ...' strings from backend
         const statusVal = (rec.status || 'absent').toLowerCase();
         const isPresent = statusVal === 'present';
@@ -72,11 +72,11 @@ function renderHistory(records) {
             </td>
             <td>
                 <div class="status-cell">
-                    ${rec.face_match_status === 'success' ? `
+                    ${rec.face_match_status === 'success' || rec.face_match_status === 'Matched' ? `
                         <i class="fa-solid fa-circle-check" style="color: var(--accent-green)"></i>
                         <span style="color: var(--accent-green)">Matched</span>
                     ` : `
-                        <span style="color: var(--text-muted); font-size: 16px; font-weight: bold;">—</span>
+                        <span style="color: var(--text-muted); font-size: 16px; font-weight: bold;">N/A</span>
                     `}
                 </div>
             </td>
@@ -121,16 +121,19 @@ async function exportHistoryCSV() {
 
     let csv = "Student Name,Student ID,Department,Section,Email,Attendance Percentage,Date,Time,Boundary Status,Face Match Status,Distance,Attendance Status\n";
     window.studentHistoryRecords.forEach(rec => {
-        const date = `"${rec.date || '—'}"`;
-        const time = `"${rec.time || '—'}"`;
+        const date = `"${rec.date || 'N/A'}"`;
+        const time = `"${rec.time || 'N/A'}"`;
         const isInside = (rec.boundary === 'inside' || rec.location_valid === true || rec.location_valid === 1 || String(rec.remarks).includes('INSIDE')) ? 'Inside' : 'Outside';
-        const faceMatched = (rec.face_match === 'success' || rec.face_match === 'match' || rec.face_match_status === 'success' || rec.face_match_status === 'match' || String(rec.remarks).includes('MATCHED')) ? 'Matched' : '—';
         
-        let distance = '—';
+        let faceMatched = "N/A";
+        if (rec.face_match_status === 'success' || rec.face_match_status === 'Matched') faceMatched = "Matched";
+        else if (rec.face_match_status === 'failed' || rec.face_match_status === 'Not Matched') faceMatched = "Not Matched";
+        
+        let distance = 'N/A';
         if (rec.remarks) {
-            const match = String(rec.remarks).match(/([0-9.]+)m/);
+            const match = String(rec.remarks).match(/([0-9.]+) ?m/);
             if (match) distance = `${match[1]} m`;
-        } else if (rec.distance) {
+        } else if (rec.distance && rec.distance !== '—') {
             distance = `${parseFloat(rec.distance).toFixed(1)} m`;
         }
 
@@ -139,7 +142,7 @@ async function exportHistoryCSV() {
         csv += `${uName},${uSid},${uDept},${uSec},${uEmail},"${attPct}%",${date},${time},"${isInside}","${faceMatched}","${distance}","${status}"\n`;
     });
     
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=ascii;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     if (a.download !== undefined) {

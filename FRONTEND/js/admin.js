@@ -122,7 +122,7 @@ async function loadOverviewStats() {
 
 function setText(id, val) {
     const el = document.getElementById(id);
-    if (el) el.textContent = (val !== undefined && val !== null) ? val : '—';
+    if (el) el.textContent = (val !== undefined && val !== null) ? val : 'N/A';
 }
 
 // ── 2. Boundary Status ────────────────────────────────────────
@@ -187,8 +187,8 @@ function renderBoundaryTable(students) {
             ? `<button class="act-btn btn-absent"  onclick="markAttendance('${s.student_id}', '${escStr(s.name)}', 'absent')"><i class="fas fa-times"></i> Mark Absent</button>`
             : `<span style="opacity:0.4; font-size:13px;">No GPS data</span>`;
 
-        const dist = (s.distance !== undefined && s.distance !== null) ? `${parseFloat(s.distance).toFixed(1)} m` : '—';
-        const lastCheck = s.last_check ? new Date(s.last_check).toLocaleString() : '—';
+        const dist = (s.distance !== undefined && s.distance !== null) ? `${parseFloat(s.distance).toFixed(1)} m` : 'N/A';
+        const lastCheck = s.last_check ? new Date(s.last_check).toLocaleString() : 'N/A';
 
         return `<tr data-name="${(s.name||'').toLowerCase()}" data-status="${status}">
             <td>
@@ -220,8 +220,8 @@ function renderOverviewBoundary(students) {
         if (isInside)  badgeHtml = `<span class="badge-inside"><i class="fas fa-check-circle"></i> INSIDE</span>`;
         else if (isOutside) badgeHtml = `<span class="badge-outside"><i class="fas fa-times-circle"></i> OUTSIDE</span>`;
         else           badgeHtml = `<span class="badge-unknown">UNKNOWN</span>`;
-        const dist = (s.distance !== undefined && s.distance !== null) ? `${parseFloat(s.distance).toFixed(1)} m` : '—';
-        const lastCheck = s.last_check ? new Date(s.last_check).toLocaleString() : '—';
+        const dist = (s.distance !== undefined && s.distance !== null) ? `${parseFloat(s.distance).toFixed(1)} m` : 'N/A';
+        const lastCheck = s.last_check ? new Date(s.last_check).toLocaleString() : 'N/A';
         return `<tr>
             <td><div style="font-weight:700;">${s.name||'—'}</div><div style="font-size:11px;opacity:0.5;">${s.student_id}</div></td>
             <td style="opacity:0.75;">${s.department||'—'}</td>
@@ -306,14 +306,14 @@ function renderAttTable(records) {
     if (!tbody) return;
     tbody.innerHTML = records.map(r => {
         const statusClass = (r.status || '').toLowerCase() === 'present' ? 'att-present' : 'att-absent';
-        const date = r.date ? new Date(r.date).toLocaleDateString() : (r.timestamp ? new Date(r.timestamp).toLocaleDateString() : '—');
-        const time = r.time || (r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : '—');
+        const date = r.date ? new Date(r.date).toLocaleDateString() : (r.timestamp ? new Date(r.timestamp).toLocaleDateString() : 'N/A');
+        const time = r.time || (r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : 'N/A');
         return `<tr data-name="${(r.name||r.student_id||'').toLowerCase()}" data-status="${(r.status||'').toLowerCase()}">
-            <td style="font-weight:700;">${r.name || '—'}</td>
+            <td style="font-weight:700;">${r.name || 'N/A'}</td>
             <td style="opacity:0.7;">${r.student_id}</td>
             <td style="opacity:0.65;font-size:0.85rem;">${date}</td>
             <td style="opacity:0.65;font-size:0.85rem;">${time}</td>
-            <td><span class="${statusClass}">${(r.status||'—').toUpperCase()}</span></td>
+            <td><span class="${statusClass}">${(r.status||'N/A').toUpperCase()}</span></td>
             <td style="opacity:0.55;font-size:0.82rem;">${r.recorded_by_role || 'system'}</td>
         </tr>`;
     }).join('');
@@ -503,19 +503,24 @@ window.submitManualAttendance = submitManualAttendance;
 
 // ── Export Details ─────────────────────────────────────────────
 
-function exportAdminDetails() {
+async function exportAdminDetails() {
     if (typeof _attendanceData === 'undefined' || !_attendanceData || _attendanceData.length === 0) {
-        showWarningToast("No attendance data loaded to export. Please refresh or load data first.");
+        showToast("Fetching data for export...", "info");
+        await loadAttendanceLogs();
+    }
+    
+    if (!_attendanceData || _attendanceData.length === 0) {
+        showWarningToast("No attendance data available to export.");
         return;
     }
 
     const q = (document.getElementById('att-search')?.value || '').toLowerCase();
-    const status = (document.getElementById('att-status-filter')?.value || '').toLowerCase();
+    const statusFilter = (document.getElementById('att-status-filter')?.value || '').toLowerCase();
 
-    // Use ALL data from the backend report (which already includes filtered/sorted students)
+    // Use ALL data from the backend report
     const filtered = _attendanceData.filter(r => {
         const nameMatch = !q || (r.name || '').toLowerCase().includes(q) || (r.student_id || '').toLowerCase().includes(q);
-        const statusMatch = !status || (r.status || '').toLowerCase() === status;
+        const statusMatch = !statusFilter || (r.status || '').toLowerCase() === statusFilter;
         return nameMatch && statusMatch;
     });
 
@@ -524,31 +529,41 @@ function exportAdminDetails() {
         return;
     }
 
-    let csvContent = "";
-    // Required 13 Columns: Student Name, Roll/Student ID, Department, Section, Email, Attendance Percentage, Date, Time, Status, Face Match, Boundary Status, Distance, Recorded By
-    const headers = ["Student Name", "Roll/Student ID", "Department", "Section", "Email", "Attendance Percentage", "Date", "Time", "Status", "Face Match", "Boundary Status", "Distance", "Recorded By"];
-    csvContent += headers.join(",") + "\n";
+    let csvContent = "Student Name,Student ID,Department,Section,Email,Attendance Percentage,Date,Time,Boundary Status,Face Match Status,Distance,Attendance Status,Recorded By\n";
 
     filtered.forEach(r => {
+        const boundaryStatus = (r.location_valid === true) ? "Inside" : (r.location_valid === false ? "Outside" : "N/A");
+        
+        let faceMatchStatus = "N/A";
+        if (r.face_match_status === 'success' || r.face_match_status === 'Matched') faceMatchStatus = "Matched";
+        else if (r.face_match_status === 'failed' || r.face_match_status === 'Not Matched') faceMatchStatus = "Not Matched";
+
+        let distanceText = "N/A";
+        if (r.remarks) {
+            const match = String(r.remarks).match(/([0-9.]+) ?m/);
+            if (match) distanceText = match[1] + " m";
+            else if (String(r.remarks).includes("Attendance manually updated")) distanceText = "N/A";
+        }
+
         const row = [
-            `"${r.name || ''}"`,
-            `"${r.student_id || ''}"`,
-            `"${r.department || ''}"`,
-            `"${r.class_name || ''}"`,
-            `"${r.email || ''}"`,
+            `"${(r.name || 'N/A').replace(/"/g, '""')}"`,
+            `"${(r.student_id || 'N/A').replace(/"/g, '""')}"`,
+            `"${(r.department || 'N/A').replace(/"/g, '""')}"`,
+            `"${(r.class_name || r.section || 'N/A').replace(/"/g, '""')}"`,
+            `"${(r.email || 'N/A').replace(/"/g, '""')}"`,
             `"${r.attendance_percentage || '0'}%"`,
-            `"${r.date || ''}"`,
-            `"${r.time || '—'}"`,
-            `"${(r.status || 'absent').toUpperCase()}"`,
-            `"${(r.face_match_status || '—').toUpperCase()}"`,
-            `"${(r.location_valid === true) ? 'Inside' : (r.location_valid === false ? 'Outside' : 'Unknown')}"`,
-            `"${r.remarks ? (r.remarks.match(/([0-9.]+)m/) ? r.remarks.match(/([0-9.]+)m/)[1] + ' m' : '—') : '—'}"`,
-            `"${r.recorded_by_role || 'system'}"`
+            `"${r.date || 'N/A'}"`,
+            `"${(r.time && r.time !== '—') ? r.time : 'N/A'}"`,
+            `"${boundaryStatus}"`,
+            `"${faceMatchStatus}"`,
+            `"${distanceText}"`,
+            `"${(r.status || 'ABSENT').toUpperCase()}"`,
+            `"${(r.recorded_by_role || 'system').toUpperCase()}"`
         ];
         csvContent += row.join(",") + "\n";
     });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=ascii;' });
     const link = document.createElement("a");
     if (link.download !== undefined) {
         const url = URL.createObjectURL(blob);

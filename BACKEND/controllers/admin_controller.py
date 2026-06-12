@@ -229,9 +229,9 @@ def get_boundary_status_check(student_id):
                 ct = ct.replace(tzinfo=timezone.utc)
             check_time = ct.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
         else:
-            check_time = "—"
+            check_time = "N/A"
     else:
-        lat, lng, distance, status, check_time = None, None, None, "unknown", "—"
+        lat, lng, distance, status, check_time = None, None, None, "unknown", "N/A"
         
     return {
         "success": True,
@@ -274,8 +274,8 @@ def get_all_students_list():
             "class_name": s["class_name"],
             "email": s["email"],
             "status": log.get("gps_status", "unknown"),
-            "distance": round(log.get("distance_meters"), 1) if log.get("distance_meters") is not None else "—",
-            "last_check": check_time.strftime("%Y-%m-%d %H:%M:%S") if check_time else "—"
+            "distance": round(log.get("distance_meters"), 1) if log.get("distance_meters") is not None else "N/A",
+            "last_check": check_time.strftime("%Y-%m-%d %H:%M:%S") if check_time else "N/A"
         })
     return {"success": True, "students": res}
 

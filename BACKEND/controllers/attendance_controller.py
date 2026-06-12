@@ -81,9 +81,9 @@ def get_history(current_student=None):
             if role == 'student':
                 display_type = "Face Verified"
                 source_type = "student"
-                dist_str = f"{distance}m" if distance is not None else "—"
+                dist_str = f"{distance} m" if distance is not None else "N/A"
                 clean_distance = f"{dist_str} {boundary_str}"
-                face_display = "success"
+                face_display = "Matched"
                 admin_name = None
             elif role != 'system':
                 admin_name = rec.get("marked_by_name")
@@ -92,13 +92,13 @@ def get_history(current_student=None):
                 display_type = f"Set by Admin ({admin_name})"
                 source_type = "manual"
                 clean_distance = "Attendance manually updated"
-                face_display = "not_attempted" # Frontend renders this as "—"
+                face_display = "N/A" # Frontend renders this as "N/A"
             else:
                 display_type = "Auto Verified"
                 source_type = "auto"
-                dist_str = f"{distance}m" if distance is not None else "—"
+                dist_str = f"{distance} m" if distance is not None else "N/A"
                 clean_distance = f"{dist_str} {boundary_str}"
-                face_display = rec.get("face_match_status", "not_attempted")
+                face_display = "Matched" if rec.get("face_match_status") == "success" else ("Not Matched" if rec.get("face_match_status") == "failed" else "N/A")
                 admin_name = None
 
             formatted_records.append({
@@ -108,7 +108,7 @@ def get_history(current_student=None):
                 "source": source_type,
                 "boundary": boundary_str,
                 "distance": clean_distance,
-                "status": (rec.get("status") or "absent").lower(),
+                "status": (rec.get("status") or "absent").upper(),
                 "recorded_by_role": role,
                 "location_valid": is_inside,
                 "face_match_status": face_display,
