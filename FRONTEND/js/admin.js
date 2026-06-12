@@ -167,7 +167,7 @@ function renderBoundaryTable(students) {
     if (!tbody) return;
 
     if (!students || students.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="empty-state"><i class="fas fa-satellite-dish"></i> No GPS data found. Students must complete location check first.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state"><i class="fas fa-satellite-dish"></i> Current location not available. Students must complete location check first.</td></tr>`;
         return;
     }
 
@@ -183,7 +183,7 @@ function renderBoundaryTable(students) {
 
         const actionBtn = `
             <div style="display:flex; gap:5px;">
-                <button class="act-btn btn-check" onclick="checkStudentGPS('${s.student_id}')" title="Fetch current status"><i class="fas fa-satellite-dish"></i> Check</button>
+                <button class="act-btn btn-check" id="check-btn-${s.student_id}" onclick="checkStudentGPS('${s.student_id}')" title="Fetch current status"><i class="fas fa-satellite-dish"></i> Check</button>
                 ${isInside 
                     ? `<button class="act-btn btn-present" onclick="markAttendance('${s.student_id}', '${escStr(s.name)}', 'present')"><i class="fas fa-check"></i> Present</button>` 
                     : `<button class="act-btn btn-absent" onclick="markAttendance('${s.student_id}', '${escStr(s.name)}', 'absent')"><i class="fas fa-times"></i> Absent</button>`
@@ -192,7 +192,7 @@ function renderBoundaryTable(students) {
         `;
 
         const dist = (s.distance !== undefined && s.distance !== null) ? `${parseFloat(s.distance).toFixed(1)} m` : 'N/A';
-        const lastCheck = s.last_check ? s.last_check : 'No recent check';
+        const lastCheck = s.last_check ? s.last_check : 'Current location not available';
 
         return `<tr data-name="${(s.name||'').toLowerCase()}" data-status="${status}" id="row-${s.student_id}">
             <td>
@@ -251,21 +251,27 @@ window.filterBoundaryTable = filterBoundaryTable;
 
 async function checkStudentGPS(studentId) {
     const row = document.getElementById(`row-${studentId}`);
+    const btn = document.getElementById(`check-btn-${studentId}`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+    }
     if (row) {
-        row.style.opacity = '0.5';
-        const statusCell = row.querySelector('.status-cell');
-        if (statusCell) statusCell.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+        row.style.opacity = '0.7';
     }
     
     try {
-        // We re-load the status to get the absolute latest from auto_verify_log
         await loadBoundaryStatus();
-        showToast('Boundary status updated for student.', 'success');
+        showToast('Boundary status refreshed.', 'success');
     } catch (err) {
         console.error(err);
         showToast('Failed to refresh student status.', 'error');
     } finally {
         if (row) row.style.opacity = '1';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-satellite-dish"></i> Check';
+        }
     }
 }
 window.checkStudentGPS = checkStudentGPS;
