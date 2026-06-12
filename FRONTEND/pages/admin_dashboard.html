@@ -291,6 +291,66 @@
     /* ── Attendance status badge ── */
     .att-present { color: #38ef7d; font-weight: 700; }
     .att-absent  { color: #ff4d4d; font-weight: 700; }
+
+    /* ── SMART ANALYTICS ADDITIONS (ADD-ONLY) ── */
+    .smart-section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 22px;
+      margin-top: 30px;
+    }
+    .smart-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(0,255,204,0.15);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .smart-card h4 {
+      margin: 0 0 16px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+      color: #00ffcc;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .smart-card h4 i { color: #00ffcc; opacity: 0.8; }
+    
+    .live-stat-hub { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .hub-stat { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; text-align: center; }
+    .hub-stat .val { font-size: 1.5rem; font-weight: 800; display: block; }
+    .hub-stat .lab { font-size: 10px; opacity: 0.5; text-transform: uppercase; }
+
+    .trust-pill { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; }
+    .trust-high { background: rgba(0,255,136,0.15); color: #00ff88; }
+    .trust-med { background: rgba(255,159,67,0.15); color: #ff9f43; }
+    .trust-low { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+
+    .ai-assistant-box {
+      background: rgba(0,153,255,0.05);
+      border: 1px solid rgba(0,153,255,0.2);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    #ai-chat-output {
+      height: 120px; overflow-y: auto; font-size: 0.85rem; color: #ccc; margin-bottom: 12px;
+      padding-right: 5px; line-height: 1.5;
+    }
+    .ai-input-wrap { display: flex; gap: 8px; }
+    .ai-input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+    .btn-ai { background: #0099ff; color: #fff; border: none; padding: 0 12px; border-radius: 6px; cursor: pointer; }
+
+    .badge-chamber { display: flex; flex-wrap: wrap; gap: 10px; }
+    .medal { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,215,0,0.1); border: 1px solid gold; color: gold; font-size: 1.2rem; }
+    
+    .occupancy-bar-wrap { margin-bottom: 12px; }
+    .occ-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; opacity: 0.7; }
+    .occ-bar-bg { height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; }
+    .occ-bar-fill { height: 100%; background: #00ffcc; box-shadow: 0 0 10px rgba(0,255,204,0.5); }
+    
+    .fraud-alert-item { padding: 8px 12px; background: rgba(255,77,77,0.05); border-left: 3px solid #ff4d4d; border-radius: 4px; margin-bottom: 8px; font-size: 12px; }
+    .fraud-alert-item strong { color: #ff4d4d; display: block; }
   </style>
 </head>
 <body class="glass-bg">
@@ -390,6 +450,85 @@
               <tr><td colspan="5" class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading…</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- ══ SMART INTELLIGENCE HUB (NEW - ADD-ONLY) ══ -->
+      <div class="main-header" style="margin-top: 50px;">
+        <div>
+          <h1>Smart Intelligence Hub</h1>
+          <p>Advanced Analytics, Fraud Detection & AI Insights</p>
+        </div>
+      </div>
+
+      <div class="smart-section-grid">
+        <!-- 5. Command Center -->
+        <div class="smart-card">
+          <h4><i class="fas fa-tower-broadcast"></i> Live Command Center</h4>
+          <div class="live-stat-hub">
+            <div class="hub-stat"><span class="val" id="hub-present" style="color:#00ffcc">0</span><span class="lab">Present</span></div>
+            <div class="hub-stat"><span class="val" id="hub-absent" style="color:#ff4d4d">0</span><span class="lab">Absent</span></div>
+            <div class="hub-stat"><span class="val" id="hub-face" style="color:#0099ff">0</span><span class="lab">Face Verified</span></div>
+            <div class="hub-stat"><span class="val" id="hub-inside" style="color:#00ff88">0</span><span class="lab">Inside Range</span></div>
+          </div>
+        </div>
+
+        <!-- 1. Trust Score Analytics -->
+        <div class="smart-card">
+          <h4><i class="fas fa-shield-halved"></i> Trust Score Analytics</h4>
+          <div style="max-height: 180px; overflow-y: auto;">
+             <table class="data-table" style="font-size: 12px;">
+                <tbody id="smart-trust-body"></tbody>
+             </table>
+          </div>
+        </div>
+
+        <!-- 3 & 8. Fraud & GPS Analytics -->
+        <div class="smart-card">
+          <h4><i class="fas fa-triangle-exclamation"></i> Fraud & GPS Alerts</h4>
+          <div id="smart-fraud-alerts" style="max-height: 180px; overflow-y: auto;">
+             <div class="empty-state" style="padding:10px;">Scanning for threats...</div>
+          </div>
+        </div>
+
+        <!-- 6. Classroom Occupancy -->
+        <div class="smart-card">
+          <h4><i class="fas fa-users-viewfinder"></i> Classroom Occupancy</h4>
+          <div id="smart-occupancy-list" style="max-height: 180px; overflow-y: auto;"></div>
+        </div>
+
+        <!-- 2 & 4. Late Arrival & Forecast -->
+        <div class="smart-card">
+          <h4><i class="fas fa-chart-line"></i> Late Arrivals & Forecast</h4>
+          <div id="smart-late-arrivals" style="margin-bottom: 15px; font-size: 12px; opacity: 0.8;"></div>
+          <div style="padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
+             <div style="font-size: 11px; color:#00ffcc; margin-bottom:5px;">FORECAST ENGINE</div>
+             <div id="smart-forecast-info" style="font-size: 13px; font-weight: 600;">Calculating probability...</div>
+          </div>
+        </div>
+
+        <!-- 9. AI Attendance Assistant -->
+        <div class="smart-card">
+          <h4><i class="fas fa-robot"></i> AI Attendance Assistant</h4>
+          <div class="ai-assistant-box">
+             <div id="ai-chat-output">Ask me about lowest attendance, students below 75%, or exam risks.</div>
+             <div class="ai-input-wrap">
+                <input type="text" id="ai-smart-query" class="ai-input" placeholder="Ask AI..."/>
+                <button class="btn-ai" onclick="askAISmart()"><i class="fas fa-paper-plane"></i></button>
+             </div>
+          </div>
+        </div>
+
+        <!-- 7. Achievement System -->
+        <div class="smart-card">
+          <h4><i class="fas fa-medal"></i> Achievement System</h4>
+          <div class="badge-chamber">
+             <div class="medal"><i class="fas fa-fire"></i></div>
+             <div class="medal"><i class="fas fa-star"></i></div>
+             <div class="medal"><i class="fas fa-bolt"></i></div>
+             <div class="medal"><i class="fas fa-trophy"></i></div>
+          </div>
+          <div style="font-size: 10px; opacity: 0.5; margin-top: 10px;">Top streaks and 100% attendance markers are prioritized.</div>
         </div>
       </div>
     </section>
@@ -571,5 +710,6 @@
 
 <script src="../js/auth.js"></script>
 <script src="../js/admin.js"></script>
+<script src="../js/smart_analytics.js"></script>
 </body>
 </html>
