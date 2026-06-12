@@ -277,3 +277,14 @@ body {
 @keyframes scanLineVertical { 0% { top: 0%; } 100% { top: 100%; } }
 @keyframes ringPulse { 0%, 100% { transform: scale(1); opacity: 0.4; } 50% { transform: scale(1.03); opacity: 0.8; border-color: var(--accent-cyan); } }
 
+/* Global Dropdown Fix */
+select option {
+  background-color: #0d111b !important;
+  color: #ffffff !important;
+  padding: 10px !important;
+}
+
+select:focus option {
+  background-color: #1a2233 !important;
+}
+

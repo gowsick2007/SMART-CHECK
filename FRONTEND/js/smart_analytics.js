@@ -187,7 +187,11 @@ async function loadForecast() {
                         Exam Risk (3d Abs): <strong>${fData.prediction_3_days_absent}%</strong>
                     </div>
                 `;
+            } else {
+                document.getElementById('smart-forecast-info').innerHTML = '<span style="opacity:0.5;">No forecast available.</span>';
             }
+        } else {
+            document.getElementById('smart-forecast-info').innerHTML = '<span style="opacity:0.5;">No student data.</span>';
         }
     } catch (err) {}
 }
@@ -206,6 +210,11 @@ async function loadAchievements() {
             const highNames = data.achievements.high_attendancy.map(s => s.name).slice(0,2).join(', ');
             const streakNames = data.achievements.streaks.map(s => s.name).slice(0,2).join(', ');
             
+            if (!perfectNames && !highNames && !streakNames) {
+                chamber.innerHTML = '<div style="opacity:0.5; font-size:12px; padding:20px; text-align:center;">No records found</div>';
+                return;
+            }
+
             if (perfectNames) {
                 chamber.insertAdjacentHTML('afterend', `<div class="dynamic-achievement" style="font-size:10px; color:gold; margin-top:5px;">100% Club: ${perfectNames}+</div>`);
             }
@@ -224,7 +233,7 @@ async function askAISmart() {
     if (!query) return;
 
     const output = document.getElementById('ai-chat-output');
-    output.innerHTML = `<em>Querying IQ...</em><br>Q: ${query}`;
+    output.innerHTML = `<div style="opacity:0.7;"><i class="fas fa-microchip fa-spin"></i> Analyzing data...</div>`;
     input.value = '';
 
     try {

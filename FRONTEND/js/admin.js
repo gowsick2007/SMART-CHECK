@@ -181,25 +181,29 @@ function renderBoundaryTable(students) {
         else if (isOutside) badgeHtml = `<span class="badge-outside"><i class="fas fa-times-circle"></i> OUTSIDE BOUNDARY</span>`;
         else           badgeHtml = `<span class="badge-unknown">UNKNOWN</span>`;
 
-        const actionBtn = isInside
-            ? `<button class="act-btn btn-present" onclick="markAttendance('${s.student_id}', '${escStr(s.name)}', 'present')"><i class="fas fa-check"></i> Mark Present</button>`
-            : isOutside
-            ? `<button class="act-btn btn-absent"  onclick="markAttendance('${s.student_id}', '${escStr(s.name)}', 'absent')"><i class="fas fa-times"></i> Mark Absent</button>`
-            : `<span style="opacity:0.4; font-size:13px;">No GPS data</span>`;
+        const actionBtn = `
+            <div style="display:flex; gap:5px;">
+                <button class="act-btn btn-check" onclick="checkStudentGPS('${s.student_id}')" title="Fetch current status"><i class="fas fa-satellite-dish"></i> Check</button>
+                ${isInside 
+                    ? `<button class="act-btn btn-present" onclick="markAttendance('${s.student_id}', '${escStr(s.name)}', 'present')"><i class="fas fa-check"></i> Present</button>` 
+                    : `<button class="act-btn btn-absent" onclick="markAttendance('${s.student_id}', '${escStr(s.name)}', 'absent')"><i class="fas fa-times"></i> Absent</button>`
+                }
+            </div>
+        `;
 
         const dist = (s.distance !== undefined && s.distance !== null) ? `${parseFloat(s.distance).toFixed(1)} m` : 'N/A';
-        const lastCheck = s.last_check ? new Date(s.last_check).toLocaleString() : 'N/A';
+        const lastCheck = s.last_check ? s.last_check : 'No recent check';
 
-        return `<tr data-name="${(s.name||'').toLowerCase()}" data-status="${status}">
+        return `<tr data-name="${(s.name||'').toLowerCase()}" data-status="${status}" id="row-${s.student_id}">
             <td>
                 <div style="font-weight:700;">${s.name || '—'}</div>
                 <div style="font-size:11px;opacity:0.5;">${s.student_id}</div>
             </td>
             <td style="opacity:0.75;">${s.email || '—'}</td>
             <td style="opacity:0.75;">${s.department || '—'}</td>
-            <td style="opacity:0.6;font-size:0.82rem;">${lastCheck}</td>
-            <td style="font-weight:600;">${dist}</td>
-            <td>${badgeHtml}</td>
+            <td style="opacity:0.6;font-size:0.82rem;" class="last-check-cell">${lastCheck}</td>
+            <td style="font-weight:600;" class="distance-cell">${dist}</td>
+            <td class="status-cell">${badgeHtml}</td>
             <td>${actionBtn}</td>
         </tr>`;
     }).join('');
@@ -244,6 +248,27 @@ function filterBoundaryTable() {
 window.filterBoundaryTable = filterBoundaryTable;
 
 // ── 3. Mark Attendance ────────────────────────────────────────
+
+async function checkStudentGPS(studentId) {
+    const row = document.getElementById(`row-${studentId}`);
+    if (row) {
+        row.style.opacity = '0.5';
+        const statusCell = row.querySelector('.status-cell');
+        if (statusCell) statusCell.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+    }
+    
+    try {
+        // We re-load the status to get the absolute latest from auto_verify_log
+        await loadBoundaryStatus();
+        showToast('Boundary status updated for student.', 'success');
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to refresh student status.', 'error');
+    } finally {
+        if (row) row.style.opacity = '1';
+    }
+}
+window.checkStudentGPS = checkStudentGPS;
 
 async function markAttendance(studentId, name, status) {
     if (!(await showConfirmModal('Confirm Attendance Update', `Are you sure you want to mark ${name} as ${status.toUpperCase()}?`))) return;
