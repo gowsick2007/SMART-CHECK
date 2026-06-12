@@ -24,6 +24,7 @@ from BACKEND.routes.face_routes import face_bp
 from BACKEND.routes.admin_routes import admin_bp
 from BACKEND.routes.auto_verify_routes import auto_verify_bp
 from BACKEND.routes.role_routes import admin_bp as admin_extra_bp, creator_bp as creator_extra_bp
+from BACKEND.routes.smart_analytics_routes import smart_analytics_bp
 from BACKEND.middleware.error_handler import register_error_handlers
 
 # Absolute path to FRONTEND pages folder (works regardless of CWD)
@@ -82,6 +83,7 @@ def create_app(config=None):
     app.register_blueprint(auto_verify_bp)
     app.register_blueprint(admin_extra_bp)
     app.register_blueprint(creator_extra_bp)
+    app.register_blueprint(smart_analytics_bp)
 
     # Register global error handlers
     register_error_handlers(app)
@@ -1332,13 +1334,6 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     def serve_js(filename):
         return send_from_directory(os.path.join(FRONTEND_ROOT, "js"), filename)
 
-    # --- SMART ANALYTICS BLUEPRINT (NEW) ---
-    try:
-        from BACKEND.routes.smart_analytics_routes import smart_analytics_bp
-        app.register_blueprint(smart_analytics_bp)
-    except Exception as e:
-        print(f"Warning: Could not register smart_analytics_bp: {e}")
-
     return app
 
 
@@ -1352,10 +1347,10 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
 #     app.run(host="0.0.0.0", port=5000, debug=True)
 app = create_app()
 
-if __name__ == "__main__":                           
-    print("=" * 60)                                 
-    print(" SMART ATTENDANCE SYSTEM")              
-    print(f" Project Root : {PROJECT_ROOT}")       
+if __name__ == "__main__":                                                
+    print("=" * 60)                                  
+    print(" SMART ATTENDANCE SYSTEM")               
+    print(f" Project Root : {PROJECT_ROOT}")         
     print(" Server URL : http://127.0.0.1:5000")    
-    print("=" * 60)
-    app.run(host="0.0.0.0", port=5000, debug=True) 
+    print("=" * 60)                                 
+    app.run(host="0.0.0.0", port=5000, debug=True)  

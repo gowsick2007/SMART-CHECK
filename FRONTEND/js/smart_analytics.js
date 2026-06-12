@@ -67,6 +67,10 @@ async function loadTrustScores() {
         const data = await res.json();
         if (data.success) {
             const tbody = document.getElementById('smart-trust-body');
+            if (data.scores.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; opacity:0.5; padding:20px;">No records found</td></tr>';
+                return;
+            }
             tbody.innerHTML = data.scores.slice(0, 8).map(s => `
                 <tr>
                     <td>
@@ -93,7 +97,7 @@ async function loadFraudAlerts() {
         if (data.success) {
             const container = document.getElementById('smart-fraud-alerts');
             if (data.alerts.length === 0) {
-                container.innerHTML = '<p style="opacity:0.5; font-size:0.8rem; text-align:center; padding-top:20px;">No threats detected.</p>';
+                container.innerHTML = '<p style="opacity:0.5; font-size:0.8rem; text-align:center; padding-top:20px;">No records found</p>';
                 return;
             }
             container.innerHTML = data.alerts.map(a => `
@@ -111,7 +115,7 @@ async function loadFraudAlerts() {
 function renderOccupancy(data) {
     const container = document.getElementById('smart-occupancy-list');
     if (!data || data.length === 0) {
-        container.innerHTML = '<p style="opacity:0.5; text-align:center;">No data.</p>';
+        container.innerHTML = '<p style="opacity:0.5; text-align:center; padding:20px;">No records found</p>';
         return;
     }
     container.innerHTML = data.map(o => `
@@ -135,7 +139,7 @@ async function loadLateArrivals() {
             const container = document.getElementById('smart-late-arrivals');
             const lates = data.arrivals.filter(a => a.category !== 'On Time');
             if (lates.length === 0) {
-                container.innerHTML = 'All students arrived on time today.';
+                container.innerHTML = '<span style="opacity:0.5;">No records found.</span>';
             } else {
                 container.innerHTML = lates.slice(0, 3).map(a => 
                     `• ${a.name} (${a.category} - ${a.delay}m)`
