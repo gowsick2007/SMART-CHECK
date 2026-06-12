@@ -324,3 +324,21 @@ def get_smart_achievements():
             "streaks": streaks
         }
     })
+
+def get_gps_heatmap():
+    """8. GPS Heatmap Analytics (Density Data)"""
+    # Fetch coordinates from recent auto_verify_log entries
+    # Group by rounded lat/lng to create a density map effect
+    heatmap = execute_query("""
+        SELECT 
+            ROUND(latitude::numeric, 4) as lat, 
+            ROUND(longitude::numeric, 4) as lng, 
+            COUNT(*) as intensity
+        FROM auto_verify_log
+        WHERE check_time >= CURRENT_DATE - INTERVAL '3 days'
+        GROUP BY lat, lng
+        ORDER BY intensity DESC
+        LIMIT 100
+    """, fetch="all") or []
+    
+    return jsonify({"success": True, "heatmap": heatmap})
