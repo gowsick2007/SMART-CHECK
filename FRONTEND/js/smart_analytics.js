@@ -17,6 +17,7 @@ async function initSmartDashboard() {
     await loadLiveStats();
     await loadTrustScores();
     await loadFraudAlerts();
+    await loadGPSHeatmap();
     await loadLateArrivals();
     await loadForecast();
     await loadAchievements();
@@ -110,6 +111,26 @@ async function loadFraudAlerts() {
     } catch (err) {
         console.error("Fraud Alerts Error:", err);
     }
+}
+
+async function loadGPSHeatmap() {
+    try {
+        const res = await fetch(`${API_BASE}/api/smart/gps-heatmap`, { headers: authHeaders() });
+        const data = await res.json();
+        if (data.success) {
+            const container = document.getElementById('smart-gps-heatmap');
+            if (data.heatmap.length === 0) {
+                container.innerHTML = '<p style="opacity:0.5; font-size:0.8rem; text-align:center; padding-top:20px;">No density patterns found.</p>';
+                return;
+            }
+            container.innerHTML = data.heatmap.slice(0, 10).map(h => `
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:11px; padding:5px; border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <span><i class="fas fa-location-crosshairs" style="color:#00ffcc"></i> ${h.lat}, ${h.lng}</span>
+                    <span style="color:#ff9f43; font-weight:700;">Intensity: ${h.intensity}</span>
+                </div>
+            `).join('');
+        }
+    } catch (err) { console.error('GPS heatmap error:', err); }
 }
 
 function renderOccupancy(data) {
