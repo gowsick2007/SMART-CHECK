@@ -327,8 +327,8 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
                 ct = ct.replace(tzinfo=UTC)   # treat naive DB value as UTC
             diff_secs = (now_utc - ct).total_seconds()
 
-            # Anti-rapid filter: block if < 10 seconds since last insert
-            if diff_secs < 10:
+            # Anti-rapid filter: block if < 8 seconds since last insert/update
+            if diff_secs < 8:
                 cursor.close()
                 conn.close()
                 return {
@@ -340,28 +340,45 @@ def store_auto_check(student_id, lat, lng, distance, status, face_verified=False
                 }
 
             diff_mins = diff_secs / 60
-
-            # Standard 30-min block: same status within 30 mins => skip
+            
+            # --- GPS HEARTBEAT LOGIC ---
+            # Even if in 30-min throttle, we ALWAYS update the auto_verify_log 
+            # so the Admin sees "Live" status.
             if diff_mins < 30:
-                # Exception: student just moved INSIDE from OUTSIDE → insert immediately
+                # Update the existing latest record with new GPS and time
+                # to satisfy the admin freshness check (60s).
+                cursor.execute("""
+                    UPDATE auto_verify_log
+                    SET latitude = %s, longitude = %s, distance_meters = %s, gps_status = %s,
+                        face_status = %s, final_status = %s, check_time = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (
+                    lat, lng, distance, gps_status, face_status_label, current_status, last_log['id']
+                ))
+                conn.commit()
+                
+                # Check if we should still mark attendance (only if status changed or face just verified)
                 was_outside = (last_log['gps_status'] == 'outside')
                 just_came_inside = is_inside and was_outside
-                # Exception 2: successful face verification overrides previous failed background checks
                 is_new_face_success = face_verified and last_log['face_status'] != 'success'
                 
                 if not just_came_inside and not is_new_face_success:
+                    # GPS is updated but Attendance is not.
                     cursor.close()
                     conn.close()
                     return {
                         "success": True,
                         "status": last_log['final_status'],
                         "is_inside": is_inside,
-                        "inserted": False,
+                        "inserted": True, # Technically updated the log
                         "blocked": "throttle",
                         "next_check_mins": round(30 - diff_mins, 1)
                     }
                 else:
+                    # Continue to marking attendance even though within 30 mins
                     should_update_id = last_log['id']
+        
+        # --- ORIGINAL THROTTLE PASSED OR BYPASSED ---
 
         # ── Step 4: Grace period for OUTSIDE ──────────────────────────────────
         grace_timer_started_at = None

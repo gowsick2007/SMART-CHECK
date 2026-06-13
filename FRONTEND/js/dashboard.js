@@ -37,7 +37,7 @@ function initDashboard() {
     // 2. Load Attendance Summary (which then paints real chart data)
     loadAttendanceSummary(user.student_id);
 
-    // 3. Initial Geofence Check
+    // 3. Initial Geofence Check (Immediate)
     updateGeofenceUI();
     setInterval(updateGeofenceUI, 10000); // Check every 10s for UI
 
