@@ -17,8 +17,8 @@ def get_smart_summary():
             COUNT(*) FILTER (WHERE location_valid = true) as inside_boundary,
             COUNT(*) FILTER (WHERE location_valid = false AND status = 'present') as outside_boundary
         FROM attendance
-        WHERE date = %s
-    """, (today,), fetch="one") or {"total_present":0, "total_absent":0, "face_verified":0, "inside_boundary":0, "outside_boundary":0}
+        WHERE date = (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE
+    """, fetch="one") or {"total_present":0, "total_absent":0, "face_verified":0, "inside_boundary":0, "outside_boundary":0}
 
     # 6. Classroom Occupancy Monitor
     occupancy = execute_query("""
@@ -26,11 +26,11 @@ def get_smart_summary():
                COUNT(*) FILTER (WHERE a.status = 'present') as present_count,
                COUNT(*) as total_students
         FROM students s
-        LEFT JOIN attendance a ON s.student_id = a.student_id AND a.date = %s
+        LEFT JOIN attendance a ON s.student_id = a.student_id AND a.date = (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE
         WHERE s.role NOT IN ('creator', 'admin') AND s.is_active = 1
         GROUP BY s.department, s.class_name
         ORDER BY s.department, s.class_name
-    """, (today,), fetch="all") or []
+    """, fetch="all") or []
 
     # 7. GPS Analytics (New)
     gps_analytics = execute_query("""
@@ -39,8 +39,8 @@ def get_smart_summary():
             COUNT(*) FILTER (WHERE distance_meters > 50 AND distance_meters < 65) as edge_attempts,
             ROUND(AVG(distance_meters)::numeric, 1) as avg_distance
         FROM auto_verify_log
-        WHERE DATE(check_time) = %s
-    """, (today,), fetch="one") or {"outside_attempts":0, "edge_attempts":0, "avg_distance":0}
+        WHERE DATE(check_time AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') = (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE
+    """, fetch="one") or {"outside_attempts":0, "edge_attempts":0, "avg_distance":0}
 
     return jsonify({
         "success": True,
@@ -102,11 +102,11 @@ def get_late_arrivals(period='daily'):
     params = [ref_time]
     
     if period == 'daily':
-        query += " AND a.date = CURRENT_DATE"
+        query += " AND a.date = (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE"
     elif period == 'weekly':
-        query += " AND a.date >= CURRENT_DATE - INTERVAL '7 days'"
+        query += " AND a.date >= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE - INTERVAL '7 days'"
     elif period == 'monthly':
-        query += " AND a.date >= CURRENT_DATE - INTERVAL '30 days'"
+        query += " AND a.date >= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE - INTERVAL '30 days'"
     
     records = execute_query(query, tuple(params), fetch="all") or []
     
@@ -231,6 +231,7 @@ def ask_ai_assistant():
             SELECT department, ROUND(AVG(CASE WHEN status = 'present' THEN 1 ELSE 0 END)*100, 2) as avg_att
             FROM attendance a
             JOIN students s ON a.student_id = s.student_id
+            WHERE a.date >= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE - INTERVAL '30 days'
             GROUP BY department
             ORDER BY avg_att ASC
             LIMIT 3
@@ -309,7 +310,7 @@ def get_smart_achievements():
         FROM attendance a
         JOIN students s ON a.student_id = s.student_id
         WHERE a.status = 'present'
-          AND a.date >= CURRENT_DATE - INTERVAL '30 days'
+          AND a.date >= (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE - INTERVAL '30 days'
         GROUP BY s.name, s.student_id
         HAVING COUNT(*) >= 25
         LIMIT 5

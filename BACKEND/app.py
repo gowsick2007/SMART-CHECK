@@ -1037,7 +1037,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             SELECT DISTINCT ON (student_id)
                 student_id, gps_status, latitude, longitude, distance_meters, check_time
             FROM auto_verify_log
-            WHERE DATE(check_time) = CURRENT_DATE
+            WHERE DATE(check_time AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') = (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE
             ORDER BY student_id, check_time DESC
         """, fetch="all") or []
         log_map = {l["student_id"]: l for l in logs}
@@ -1045,22 +1045,35 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         from datetime import timezone, timedelta
         IST = timezone(timedelta(hours=5, minutes=30))
 
+        from datetime import datetime, timezone, timedelta
+        IST = timezone(timedelta(hours=5, minutes=30))
+        now_ist = datetime.now(IST)
+
         result = []
         for s in students:
             log = log_map.get(s["student_id"])
+            dist, gps_status, check_time = None, "unknown", None
+            
             if log and log.get("latitude") and log.get("longitude"):
-                dist = haversine(log["latitude"], log["longitude"], COLLEGE_LAT, COLLEGE_LNG)
-                gps_status = "inside" if dist <= ACTIVE_GEOFENCE_RADIUS else "outside"
                 ct = log.get("check_time")
                 if ct:
-                    # DB returns UTC-naive; attach UTC then convert to IST
                     if ct.tzinfo is None:
                         ct = ct.replace(tzinfo=timezone.utc)
-                    check_time = ct.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
+                    ct_ist = ct.astimezone(IST)
+                    
+                    # Logic: Only show status if updated within last 60 seconds
+                    diff_sec = (now_ist - ct_ist).total_seconds()
+                    if diff_sec <= 60:
+                        dist = haversine(log["latitude"], log["longitude"], COLLEGE_LAT, COLLEGE_LNG)
+                        gps_status = "inside" if dist <= ACTIVE_GEOFENCE_RADIUS else "outside"
+                        check_time = ct_ist.strftime("%Y-%m-%d %H:%M:%S")
+                    else:
+                        gps_status = "unavailable"
+                        check_time = ct_ist.strftime("%Y-%m-%d %H:%M:%S")
                 else:
-                    check_time = None
+                    gps_status = "unavailable"
             else:
-                dist, gps_status, check_time = None, "unknown", None
+                gps_status = "unavailable"
 
             result.append({
                 "student_id": s["student_id"],
