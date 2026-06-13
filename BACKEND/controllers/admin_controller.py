@@ -83,11 +83,12 @@ def get_boundary_status():
     """GET /api/admin/boundary-status"""
     today = get_current_date()
     query = """
-        SELECT DISTINCT ON (student_id) 
-            student_id, gps_status, face_status, final_status, check_time, latitude, longitude
-        FROM auto_verify_log 
-        WHERE DATE(check_time) = %s
-        ORDER BY student_id, check_time DESC
+        SELECT DISTINCT ON (l.student_id) 
+            l.student_id, l.gps_status, l.face_status, l.final_status, l.check_time, l.latitude, l.longitude
+        FROM auto_verify_log l
+        JOIN students s ON l.student_id = s.student_id
+        WHERE DATE(l.check_time) = %s AND LOWER(s.role) = 'student'
+        ORDER BY l.student_id, l.check_time DESC
     """
     latest_logs = execute_query(query, (today,), fetch="all")
     
@@ -106,13 +107,14 @@ def get_today_summary():
     """GET /api/admin/today-summary"""
     today = get_current_date()
     
-    total_res = execute_query("SELECT COUNT(*) as count FROM students", fetch="one")
+    total_res = execute_query("SELECT COUNT(*) as count FROM students WHERE LOWER(role) = 'student'", fetch="one")
     total_students = total_res["count"] if total_res else 0
     
     present_query = """
-        SELECT COUNT(DISTINCT student_id) as present_count 
-        FROM attendance 
-        WHERE date = %s AND status IN ('present', 'late')
+        SELECT COUNT(DISTINCT a.student_id) as present_count 
+        FROM attendance a
+        JOIN students s ON a.student_id = s.student_id
+        WHERE a.date = %s AND a.status IN ('present', 'late') AND LOWER(s.role) = 'student'
     """
     present_res = execute_query(present_query, (today,), fetch="one")
     present_count = present_res["present_count"] if present_res else 0
@@ -254,11 +256,12 @@ def get_all_students_list():
     
     students = StudentModel.get_all()
     logs = execute_query("""
-        SELECT DISTINCT ON (student_id) 
-            student_id, gps_status, distance_meters, check_time 
-        FROM auto_verify_log 
-        WHERE DATE(check_time) = CURRENT_DATE
-        ORDER BY student_id, check_time DESC
+        SELECT DISTINCT ON (l.student_id) 
+            l.student_id, l.gps_status, l.distance_meters, l.check_time 
+        FROM auto_verify_log l
+        JOIN students s ON l.student_id = s.student_id
+        WHERE DATE(l.check_time) = CURRENT_DATE AND LOWER(s.role) = 'student'
+        ORDER BY l.student_id, l.check_time DESC
     """)
     
     log_map = {l["student_id"]: l for l in logs} if logs else {}

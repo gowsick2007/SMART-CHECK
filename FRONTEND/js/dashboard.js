@@ -100,34 +100,40 @@ function updateGeofenceUI() {
                 student_id: user.student_id,
                 latitude: lat,
                 longitude: lng,
-                face_verified: false // Real face verification required via manual scan
+                face_verified: false 
             })
         });
         const data = await res.json();
         
-        // MANDATORY SYSTEM DEBUG LOGGING
-        console.log("ROLE:", localStorage.getItem('userRole') || 'student');
-        console.log("DISTANCE:", data.distance);
         console.log("BOUNDARY:", data.is_inside ? "INSIDE" : "OUTSIDE");
-
         renderGeofenceStatus(data.is_inside, data.distance);
 
-        // Grace timer: backend does not return seconds remaining directly.
-        // Compute from localStorage timestamp of when outside state started.
         if (!data.is_inside) {
             const outsideStart = parseInt(localStorage.getItem('outside_start_ts') || 0);
             const now = Date.now();
-            if (!outsideStart) {
-                localStorage.setItem('outside_start_ts', now);
-            }
+            if (!outsideStart) localStorage.setItem('outside_start_ts', now);
             const elapsed = Math.floor((now - (outsideStart || now)) / 1000);
-            const remaining = Math.max(0, 300 - elapsed); // 5-min grace
+            const remaining = Math.max(0, 300 - elapsed);
             updateGraceTimerUI(remaining, false);
         } else {
             localStorage.removeItem('outside_start_ts');
             updateGraceTimerUI(0, true);
         }
-    });
+    }, (err) => {
+        console.warn("Geolocation error:", err.message);
+        let msg = "Please turn on location for boundary verification.";
+        if (err.code === 1) msg = "Location permission denied. Please enable it in browser settings.";
+        else if (err.code === 2) msg = "Position unavailable. Ensure GPS is active.";
+        
+        const text = document.getElementById('boundaryStatus');
+        if (text) {
+            text.textContent = msg;
+            text.style.color = "#ff4d4d";
+            text.style.fontSize = "12px";
+        }
+        const visual = document.getElementById('geofence-visual');
+        if (visual) visual.style.borderColor = "#ff4d4d";
+    }, { enableHighAccuracy: true });
 }
 
 async function checkFaceRegistration(studentId) {

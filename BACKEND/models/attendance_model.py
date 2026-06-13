@@ -103,7 +103,7 @@ class AttendanceModel:
             SELECT a.*, s.name, s.department, s.class_name
             FROM attendance a
             JOIN students s ON a.student_id = s.student_id
-            WHERE a.date = %s
+            WHERE a.date = %s AND LOWER(s.role) = 'student'
             ORDER BY a.time ASC
         """
         return execute_query(query, (date,), fetch="all")

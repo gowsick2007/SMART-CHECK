@@ -375,7 +375,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             SELECT l.*, s.name, s.department, s.class_name 
             FROM auto_verify_log l
             JOIN students s ON l.student_id = s.student_id
-            WHERE 1=1
+            WHERE LOWER(s.role) = 'student'
         """
         params = []
         if dept:
@@ -492,12 +492,17 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     @require_role(["creator"])
     def api_system_stats(current_student=None):
         from DATABASE.connection.db_connection import execute_query
-        total_users = execute_query("SELECT COUNT(*) as count FROM students", fetch="one")["count"]
-        total_admins = execute_query("SELECT COUNT(*) as count FROM students WHERE role = 'admin'", fetch="one")["count"]
-        active_users = execute_query("SELECT COUNT(*) as count FROM students WHERE is_active = 1", fetch="one")["count"]
+        total_users = execute_query("SELECT COUNT(*) as count FROM students WHERE LOWER(role) = 'student'", fetch="one")["count"]
+        total_admins = execute_query("SELECT COUNT(*) as count FROM students WHERE LOWER(role) = 'admin'", fetch="one")["count"]
+        active_users = execute_query("SELECT COUNT(*) as count FROM students WHERE is_active = 1 AND LOWER(role) = 'student'", fetch="one")["count"]
         
-        # Simple attendance % today logic
-        attendance_today = execute_query("SELECT COUNT(DISTINCT student_id) as count FROM attendance WHERE date = CURRENT_DATE", fetch="one")["count"]
+        # Simple attendance % today logic (students only)
+        attendance_today = execute_query("""
+            SELECT COUNT(DISTINCT student_id) as count 
+            FROM attendance 
+            WHERE date = CURRENT_DATE 
+              AND student_id IN (SELECT student_id FROM students WHERE LOWER(role) = 'student')
+        """, fetch="one")["count"]
         attendance_pct = (attendance_today / total_users * 100) if total_users > 0 else 0
         
         return jsonify({
@@ -516,7 +521,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         from DATABASE.connection.db_connection import execute_query
         from datetime import timezone, timedelta
         IST = timezone(timedelta(hours=5, minutes=30))
-        query = "SELECT name, last_login, role FROM students WHERE last_login IS NOT NULL ORDER BY last_login DESC LIMIT 20"
+        query = "SELECT name, last_login, role FROM students WHERE last_login IS NOT NULL AND LOWER(role) = 'student' ORDER BY last_login DESC LIMIT 20"
         logs = execute_query(query, fetch="all")
         for log in (logs or []):
             ll = log.get("last_login")
@@ -920,11 +925,14 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
     def api_admin_overview_stats(current_student=None):
         from DATABASE.connection.db_connection import execute_query
         total_students = execute_query(
-            "SELECT COUNT(*) as c FROM students WHERE role NOT IN ('creator','admin')",
+            "SELECT COUNT(*) as c FROM students WHERE LOWER(role) = 'student'",
             fetch="one")["c"]
-        today_present  = execute_query(
-            "SELECT COUNT(DISTINCT student_id) as c FROM attendance WHERE date = CURRENT_DATE AND status = 'present'",
-            fetch="one")["c"]
+        today_present  = execute_query("""
+            SELECT COUNT(DISTINCT a.student_id) as c 
+            FROM attendance a
+            JOIN students s ON a.student_id = s.student_id
+            WHERE a.date = CURRENT_DATE AND a.status = 'present' AND LOWER(s.role) = 'student'
+        """, fetch="one")["c"]
         today_absent   = max(total_students - today_present, 0)
 
         # Fetch current boundary
@@ -948,12 +956,13 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
             a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlam/2)**2
             return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-        # Count inside/outside from auto_verify_log (latest per student today)
+        # Count inside/outside from auto_verify_log (latest per student today, students only)
         latest_logs = execute_query("""
-            SELECT DISTINCT ON (student_id) student_id, latitude, longitude 
-            FROM auto_verify_log 
-            WHERE DATE(check_time) = CURRENT_DATE 
-            ORDER BY student_id, check_time DESC
+            SELECT DISTINCT ON (l.student_id) l.student_id, l.latitude, l.longitude 
+            FROM auto_verify_log l
+            JOIN students s ON l.student_id = s.student_id
+            WHERE DATE(l.check_time) = CURRENT_DATE AND LOWER(s.role) = 'student'
+            ORDER BY l.student_id, l.check_time DESC
         """, fetch="all") or []
         
         inside_count, outside_count = 0, 0

@@ -11,13 +11,15 @@ def get_smart_summary():
     # 5. Live Attendance Command Center (Real-time updates)
     stats = execute_query("""
         SELECT 
-            COUNT(*) FILTER (WHERE status = 'present') as total_present,
-            COUNT(*) FILTER (WHERE status = 'absent' OR status IS NULL) as total_absent,
-            COUNT(*) FILTER (WHERE face_match_status = 'success') as face_verified,
-            COUNT(*) FILTER (WHERE location_valid = true) as inside_boundary,
-            COUNT(*) FILTER (WHERE location_valid = false AND status = 'present') as outside_boundary
-        FROM attendance
-        WHERE date = (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE
+            COUNT(*) FILTER (WHERE a.status = 'present') as total_present,
+            COUNT(*) FILTER (WHERE a.status = 'absent' OR a.status IS NULL) as total_absent,
+            COUNT(*) FILTER (WHERE a.face_match_status = 'success') as face_verified,
+            COUNT(*) FILTER (WHERE a.location_valid = true) as inside_boundary,
+            COUNT(*) FILTER (WHERE a.location_valid = false AND a.status = 'present') as outside_boundary
+        FROM attendance a
+        JOIN students s ON a.student_id = s.student_id
+        WHERE a.date = (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE
+          AND LOWER(s.role) = 'student'
     """, fetch="one") or {"total_present":0, "total_absent":0, "face_verified":0, "inside_boundary":0, "outside_boundary":0}
 
     # 6. Classroom Occupancy Monitor
@@ -35,11 +37,13 @@ def get_smart_summary():
     # 7. GPS Analytics (New)
     gps_analytics = execute_query("""
         SELECT 
-            COUNT(*) FILTER (WHERE gps_status = 'outside') as outside_attempts,
-            COUNT(*) FILTER (WHERE distance_meters > 50 AND distance_meters < 65) as edge_attempts,
-            ROUND(AVG(distance_meters)::numeric, 1) as avg_distance
-        FROM auto_verify_log
-        WHERE DATE(check_time AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') = (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE
+            COUNT(*) FILTER (WHERE l.gps_status = 'outside') as outside_attempts,
+            COUNT(*) FILTER (WHERE l.distance_meters > 50 AND l.distance_meters < 65) as edge_attempts,
+            ROUND(AVG(l.distance_meters)::numeric, 1) as avg_distance
+        FROM auto_verify_log l
+        JOIN students s ON l.student_id = s.student_id
+        WHERE DATE(l.check_time AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') = (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::DATE
+          AND LOWER(s.role) = 'student'
     """, fetch="one") or {"outside_attempts":0, "edge_attempts":0, "avg_distance":0}
 
     return jsonify({
@@ -97,7 +101,7 @@ def get_late_arrivals(period='daily'):
                EXTRACT(EPOCH FROM (a.time::time - %s::time))/60 as diff_minutes
         FROM attendance a
         JOIN students s ON a.student_id = s.student_id
-        WHERE a.status = 'present'
+        WHERE a.status = 'present' AND LOWER(s.role) = 'student'
     """
     params = [ref_time]
     
@@ -135,11 +139,13 @@ def get_fraud_alerts():
     
     # Check failed face attempts in last 3 days
     failed_faces = execute_query("""
-        SELECT student_id, COUNT(*) as fail_count
-        FROM attendance
-        WHERE (face_match_status = 'failed' OR face_match_status = 'Not Matched')
-          AND date >= CURRENT_DATE - INTERVAL '3 days'
-        GROUP BY student_id
+        SELECT a.student_id, COUNT(*) as fail_count
+        FROM attendance a
+        JOIN students s ON a.student_id = s.student_id
+        WHERE (a.face_match_status = 'failed' OR a.face_match_status = 'Not Matched')
+          AND a.date >= CURRENT_DATE - INTERVAL '3 days'
+          AND LOWER(s.role) = 'student'
+        GROUP BY a.student_id
         HAVING COUNT(*) >= 2
     """, fetch="all") or []
     
@@ -153,11 +159,13 @@ def get_fraud_alerts():
 
     # Check outside boundary present markings
     outside_present = execute_query("""
-        SELECT student_id, COUNT(*) as out_count
-        FROM attendance
-        WHERE status = 'present' AND (location_valid = false OR boundary = 'outside')
-          AND date >= CURRENT_DATE - INTERVAL '7 days'
-        GROUP BY student_id
+        SELECT a.student_id, COUNT(*) as out_count
+        FROM attendance a
+        JOIN students s ON a.student_id = s.student_id
+        WHERE a.status = 'present' AND (a.location_valid = false OR a.boundary = 'outside')
+          AND a.date >= CURRENT_DATE - INTERVAL '7 days'
+          AND LOWER(s.role) = 'student'
+        GROUP BY a.student_id
         HAVING COUNT(*) >= 3
     """, fetch="all") or []
 
@@ -171,11 +179,13 @@ def get_fraud_alerts():
 
     # Check Boundary Abuse Attempts (Too many outside logs)
     boundary_abuse = execute_query("""
-        SELECT student_id, COUNT(*) as attempt_count
-        FROM auto_verify_log
-        WHERE gps_status = 'outside'
-          AND check_time >= CURRENT_DATE - INTERVAL '2 days'
-        GROUP BY student_id
+        SELECT l.student_id, COUNT(*) as attempt_count
+        FROM auto_verify_log l
+        JOIN students s ON l.student_id = s.student_id
+        WHERE l.gps_status = 'outside'
+          AND l.check_time >= CURRENT_DATE - INTERVAL '2 days'
+          AND LOWER(s.role) = 'student'
+        GROUP BY l.student_id
         HAVING COUNT(*) >= 10
     """, fetch="all") or []
 
@@ -332,11 +342,13 @@ def get_gps_heatmap():
     # Group by rounded lat/lng to create a density map effect
     heatmap = execute_query("""
         SELECT 
-            ROUND(latitude::numeric, 4) as lat, 
-            ROUND(longitude::numeric, 4) as lng, 
+            ROUND(l.latitude::numeric, 4) as lat, 
+            ROUND(l.longitude::numeric, 4) as lng, 
             COUNT(*) as intensity
-        FROM auto_verify_log
-        WHERE check_time >= CURRENT_DATE - INTERVAL '3 days'
+        FROM auto_verify_log l
+        JOIN students s ON l.student_id = s.student_id
+        WHERE l.check_time >= CURRENT_DATE - INTERVAL '3 days'
+          AND LOWER(s.role) = 'student'
         GROUP BY lat, lng
         ORDER BY intensity DESC
         LIMIT 100

@@ -52,7 +52,7 @@ class StudentModel:
     @staticmethod
     def get_all(department=None, class_name=None):
         """Fetch all active students, optionally filtered."""
-        base = "SELECT * FROM students WHERE (is_active = 1 OR is_active IS NULL)"
+        base = "SELECT * FROM students WHERE (is_active = 1 OR is_active IS NULL) AND LOWER(role) = 'student'"
         if department and class_name:
             query = base + " AND department = %s AND class_name = %s"
             return execute_query(query, (department, class_name), fetch="all")
