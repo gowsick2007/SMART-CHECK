@@ -2,7 +2,8 @@
 // smart_analytics.js — Frontend logic for Command Center
 // ============================================================
 
-const API_BASE = '';
+// Use global API_BASE if defined in auth.js, else fallback to empty
+const SMART_API_BASE = (typeof API_BASE !== 'undefined') ? API_BASE : '';
 
 function authHeaders() {
     const token = localStorage.getItem('sat_token') || localStorage.getItem('token');
@@ -14,6 +15,7 @@ function authHeaders() {
 
 async function initSmartDashboard() {
     if (!document.getElementById('hub-present')) return;
+    console.log("Initializing Smart Intelligence Hub...");
     await loadLiveStats();
     await loadTrustScores();
     await loadFraudAlerts();
@@ -25,7 +27,7 @@ async function initSmartDashboard() {
 
 async function loadLiveStats() {
     try {
-        const res = await fetch(`${API_BASE}/api/smart/summary`, { headers: authHeaders() });
+        const res = await fetch(`${SMART_API_BASE}/api/smart/summary`, { headers: authHeaders() });
         const data = await res.json();
         if (data.success) {
             document.getElementById('hub-present').textContent = data.stats.total_present || 0;
@@ -64,11 +66,11 @@ async function loadLiveStats() {
 
 async function loadTrustScores() {
     try {
-        const res = await fetch(`${API_BASE}/api/smart/trust-scores`, { headers: authHeaders() });
+        const res = await fetch(`${SMART_API_BASE}/api/smart/trust-scores`, { headers: authHeaders() });
         const data = await res.json();
         if (data.success) {
             const tbody = document.getElementById('smart-trust-body');
-            if (data.scores.length === 0) {
+            if (!data.scores || data.scores.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; opacity:0.5; padding:20px;">No records found</td></tr>';
                 return;
             }
@@ -93,11 +95,11 @@ async function loadTrustScores() {
 
 async function loadFraudAlerts() {
     try {
-        const res = await fetch(`${API_BASE}/api/smart/fraud-alerts`, { headers: authHeaders() });
+        const res = await fetch(`${SMART_API_BASE}/api/smart/fraud-alerts`, { headers: authHeaders() });
         const data = await res.json();
         if (data.success) {
             const container = document.getElementById('smart-fraud-alerts');
-            if (data.alerts.length === 0) {
+            if (!data.alerts || data.alerts.length === 0) {
                 container.innerHTML = '<p style="opacity:0.5; font-size:0.8rem; text-align:center; padding-top:20px;">No records found</p>';
                 return;
             }
@@ -115,11 +117,11 @@ async function loadFraudAlerts() {
 
 async function loadGPSHeatmap() {
     try {
-        const res = await fetch(`${API_BASE}/api/smart/gps-heatmap`, { headers: authHeaders() });
+        const res = await fetch(`${SMART_API_BASE}/api/smart/gps-heatmap`, { headers: authHeaders() });
         const data = await res.json();
         if (data.success) {
             const container = document.getElementById('smart-gps-heatmap');
-            if (data.heatmap.length === 0) {
+            if (!data.heatmap || data.heatmap.length === 0) {
                 container.innerHTML = '<p style="opacity:0.5; font-size:0.8rem; text-align:center; padding-top:20px;">No density patterns found.</p>';
                 return;
             }
@@ -154,11 +156,11 @@ function renderOccupancy(data) {
 
 async function loadLateArrivals() {
     try {
-        const res = await fetch(`${API_BASE}/api/smart/late-arrivals?period=daily`, { headers: authHeaders() });
+        const res = await fetch(`${SMART_API_BASE}/api/smart/late-arrivals?period=daily`, { headers: authHeaders() });
         const data = await res.json();
         if (data.success) {
             const container = document.getElementById('smart-late-arrivals');
-            const lates = data.arrivals.filter(a => a.category !== 'On Time');
+            const lates = (data.arrivals || []).filter(a => a.category !== 'On Time');
             if (lates.length === 0) {
                 container.innerHTML = '<span style="opacity:0.5;">No records found.</span>';
             } else {
@@ -172,11 +174,11 @@ async function loadLateArrivals() {
 
 async function loadForecast() {
     try {
-        const res = await fetch(`${API_BASE}/api/smart/trust-scores`, { headers: authHeaders() });
+        const res = await fetch(`${SMART_API_BASE}/api/smart/trust-scores`, { headers: authHeaders() });
         const data = await res.json();
-        if (data.success && data.scores.length > 0) {
+        if (data.success && data.scores && data.scores.length > 0) {
             const top = data.scores[0];
-            const fRes = await fetch(`${API_BASE}/api/smart/forecast/${top.student_id}`, { headers: authHeaders() });
+            const fRes = await fetch(`${SMART_API_BASE}/api/smart/forecast/${top.student_id}`, { headers: authHeaders() });
             const fData = await fRes.json();
             if (fData.success) {
                 document.getElementById('smart-forecast-info').innerHTML = `
@@ -191,14 +193,16 @@ async function loadForecast() {
                 document.getElementById('smart-forecast-info').innerHTML = '<span style="opacity:0.5;">No forecast available.</span>';
             }
         } else {
-            document.getElementById('smart-forecast-info').innerHTML = '<span style="opacity:0.5;">No student data.</span>';
+            document.getElementById('smart-forecast-info').innerHTML = '<span style="opacity:0.5;">No records found.</span>';
         }
-    } catch (err) {}
+    } catch (err) {
+        document.getElementById('smart-forecast-info').innerHTML = '<span style="opacity:0.5;">No records found.</span>';
+    }
 }
 
 async function loadAchievements() {
     try {
-        const res = await fetch(`${API_BASE}/api/smart/achievements`, { headers: authHeaders() });
+        const res = await fetch(`${SMART_API_BASE}/api/smart/achievements`, { headers: authHeaders() });
         const data = await res.json();
         if (data.success) {
             const chamber = document.querySelector('.badge-chamber');
@@ -206,9 +210,14 @@ async function loadAchievements() {
             const existingLabels = chamber.parentElement.querySelectorAll('.dynamic-achievement');
             existingLabels.forEach(el => el.remove());
 
-            const perfectNames = data.achievements.perfect_score.map(s => s.name).slice(0,2).join(', ');
-            const highNames = data.achievements.high_attendancy.map(s => s.name).slice(0,2).join(', ');
-            const streakNames = data.achievements.streaks.map(s => s.name).slice(0,2).join(', ');
+            if (!data.achievements) {
+                chamber.innerHTML = '<div style="opacity:0.5; font-size:12px; padding:20px; text-align:center;">No records found</div>';
+                return;
+            }
+
+            const perfectNames = (data.achievements.perfect_score || []).map(s => s.name).slice(0,2).join(', ');
+            const highNames = (data.achievements.high_attendancy || []).map(s => s.name).slice(0,2).join(', ');
+            const streakNames = (data.achievements.streaks || []).map(s => s.name).slice(0,2).join(', ');
             
             if (!perfectNames && !highNames && !streakNames) {
                 chamber.innerHTML = '<div style="opacity:0.5; font-size:12px; padding:20px; text-align:center;">No records found</div>';
@@ -237,7 +246,7 @@ async function askAISmart() {
     input.value = '';
 
     try {
-        const res = await fetch(`${API_BASE}/api/smart/ai-assistant?q=${encodeURIComponent(query)}`, { headers: authHeaders() });
+        const res = await fetch(`${SMART_API_BASE}/api/smart/ai-assistant?q=${encodeURIComponent(query)}`, { headers: authHeaders() });
         const data = await res.json();
         if (data.success) {
             output.innerHTML = `<strong>Assistant:</strong><br>${data.answer}`;

@@ -172,13 +172,16 @@ function renderBoundaryTable(students) {
     }
 
     tbody.innerHTML = students.map(s => {
-        const status = (s.gps_status || 'unknown').toLowerCase();
+        const rawStatus = (s.gps_status || 'unknown').toLowerCase();
+        const status = rawStatus === 'unavailable' ? 'unknown' : rawStatus;
         const isInside = status === 'inside';
         const isOutside = status === 'outside';
+        const isUnavailable = rawStatus === 'unavailable';
 
         let badgeHtml;
         if (isInside)  badgeHtml = `<span class="badge-inside"><i class="fas fa-check-circle"></i> INSIDE BOUNDARY</span>`;
         else if (isOutside) badgeHtml = `<span class="badge-outside"><i class="fas fa-times-circle"></i> OUTSIDE BOUNDARY</span>`;
+        else if (isUnavailable) badgeHtml = `<span class="badge-unknown" style="color:#ff6b6b; border-color:rgba(255,107,107,0.3);">UNAVAILABLE</span>`;
         else           badgeHtml = `<span class="badge-unknown">UNKNOWN</span>`;
 
         const actionBtn = `
@@ -191,8 +194,8 @@ function renderBoundaryTable(students) {
             </div>
         `;
 
-        const dist = (s.distance !== undefined && s.distance !== null) ? `${parseFloat(s.distance).toFixed(1)} m` : 'N/A';
-        const lastCheck = s.last_check ? s.last_check : 'Current location not available';
+        const dist = (s.distance !== undefined && s.distance !== null && !isUnavailable) ? `${parseFloat(s.distance).toFixed(1)} m` : 'N/A';
+        const lastCheck = (isUnavailable || !s.last_check) ? 'Current location not available' : s.last_check;
 
         return `<tr data-name="${(s.name||'').toLowerCase()}" data-status="${status}" id="row-${s.student_id}">
             <td>
@@ -250,24 +253,25 @@ window.filterBoundaryTable = filterBoundaryTable;
 // ── 3. Mark Attendance ────────────────────────────────────────
 
 async function checkStudentGPS(studentId) {
-    const row = document.getElementById(`row-${studentId}`);
     const btn = document.getElementById(`check-btn-${studentId}`);
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
     }
-    if (row) {
-        row.style.opacity = '0.7';
-    }
     
     try {
+        // First refresh attempt
         await loadBoundaryStatus();
-        showToast('Boundary status refreshed.', 'success');
+        
+        // Wait 2 seconds and retry once more to catch any incoming live update
+        await new Promise(r => setTimeout(r, 2000));
+        await loadBoundaryStatus();
+        
+        showToast('Boundary status check complete.', 'success');
     } catch (err) {
         console.error(err);
         showToast('Failed to refresh student status.', 'error');
     } finally {
-        if (row) row.style.opacity = '1';
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-satellite-dish"></i> Check';
