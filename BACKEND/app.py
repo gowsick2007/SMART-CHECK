@@ -1012,7 +1012,7 @@ RADIUS = ACTIVE_GEOFENCE_RADIUS
         section = request.args.get("section")
         sort = request.args.get("sort", "A-Z")
         
-        query = "SELECT student_id, name, email, department FROM students WHERE is_active = 1 AND role NOT IN ('creator','admin')"
+        query = "SELECT student_id, name, email, department FROM students WHERE is_active = 1 AND LOWER(role) NOT IN ('creator', 'admin', 'staff')"
         params = []
         if dept:
             query += " AND department = %s"
