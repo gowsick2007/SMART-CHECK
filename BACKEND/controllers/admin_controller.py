@@ -205,6 +205,7 @@ def mark_attendance():
 
 def get_boundary_status_check(student_id):
     from BACKEND.models.student_model import StudentModel
+    from BACKEND.services.geofence_service import calculate_distance
     
     student = StudentModel.find_by_student_id(student_id)
     if not student:
@@ -213,6 +214,23 @@ def get_boundary_status_check(student_id):
     if not student:
         return {"success": False, "message": "Student not found"}
         
+    # Get current boundary
+    res_loc = execute_query("SELECT latitude, longitude FROM boundary_locations ORDER BY updated_time DESC LIMIT 1", fetch="one")
+    if res_loc:
+        c_lat, c_lng = float(res_loc["latitude"]), float(res_loc["longitude"])
+    else:
+        try:
+            from CONFIG.college_location_config import COLLEGE_LAT, COLLEGE_LNG
+            c_lat, c_lng = COLLEGE_LAT, COLLEGE_LNG
+        except:
+            c_lat, c_lng = 0.0, 0.0
+
+    try:
+        from CONFIG.college_location_config import RADIUS
+        ACTIVE_GEOFENCE_RADIUS = RADIUS
+    except:
+        ACTIVE_GEOFENCE_RADIUS = 50
+
     log = execute_query("""
         SELECT latitude, longitude, distance_meters, gps_status, check_time 
         FROM auto_verify_log 
@@ -220,20 +238,38 @@ def get_boundary_status_check(student_id):
         ORDER BY check_time DESC LIMIT 1
     """, (student["student_id"],), fetch="one")
     
+    status, distance, check_time, is_stale = "unknown", None, "N/A", True
+    lat, lng = None, None
+
     if log:
         lat = log.get('latitude')
         lng = log.get('longitude')
-        distance = log.get('distance_meters')
-        status = log.get('gps_status', 'outside')
         ct = log.get('check_time')
+        
         if ct:
             if ct.tzinfo is None:
                 ct = ct.replace(tzinfo=timezone.utc)
             check_time = ct.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Freshness check: 60 seconds
+            now_ist = datetime.now(IST)
+            ct_ist = ct.astimezone(IST)
+            diff_sec = (now_ist - ct_ist).total_seconds()
+            
+            if diff_sec <= 60:
+                is_stale = False
+                if lat and lng:
+                    distance = calculate_distance(lat, lng, c_lat, c_lng)
+                    status = "inside" if distance <= ACTIVE_GEOFENCE_RADIUS else "outside"
+                else:
+                    status = "unavailable"
+            else:
+                is_stale = True
+                status = "unavailable"
         else:
-            check_time = "N/A"
+            status = "unavailable"
     else:
-        lat, lng, distance, status, check_time = None, None, None, "unknown", "N/A"
+        status = "unavailable"
         
     return {
         "success": True,
@@ -247,6 +283,7 @@ def get_boundary_status_check(student_id):
         "status": status,
         "distance": round(distance, 1) if distance is not None else None,
         "last_check": check_time,
+        "is_stale": is_stale,
         "latitude": lat,
         "longitude": lng
     }

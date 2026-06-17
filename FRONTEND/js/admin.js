@@ -474,7 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-window.selectManualStudent = function(s) {
+window.selectManualStudent = async function(s) {
     const input = document.getElementById('manual-username');
     const box = document.getElementById('manual-suggestions');
     const det = document.getElementById('manual-status-details');
@@ -483,19 +483,54 @@ window.selectManualStudent = function(s) {
     box.style.display = 'none';
     _selectedManualStudentId = s.student_id;
     
-    const gpsStatus = s.gps_status ? s.gps_status.toLowerCase() : 'unknown';
-    let color = '#ff6b6b';
-    if(gpsStatus === 'inside') color = '#00ffcc';
-    if(gpsStatus === 'unknown') color = '#ffd166';
-
     det.innerHTML = `
         <div class="detail-row"><span class="detail-label">Name</span><span class="detail-val">${s.name}</span></div>
         <div class="detail-row"><span class="detail-label">Student ID</span><span class="detail-val">${s.student_id}</span></div>
         <div class="detail-row"><span class="detail-label">Email</span><span class="detail-val" style="font-size:11px;">${s.email}</span></div>
         <div class="detail-row"><span class="detail-label">Dept / Section</span><span class="detail-val">${s.department} / ${s.section || '—'}</span></div>
-        <div class="detail-row" style="border-bottom:none;"><span class="detail-label">Boundary</span><span class="detail-val" style="color:${color}; text-transform:uppercase;">${gpsStatus}</span></div>
+        <div id="manual-live-boundary" class="detail-row" style="border-bottom:none;">
+            <span class="detail-label">Boundary</span>
+            <span class="detail-val"><i class="fas fa-spinner fa-spin"></i> Fetching live status...</span>
+        </div>
     `;
     det.style.display = 'block';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/boundary-check?student_id=${s.student_id}`, { headers: authHeaders() });
+        const data = await res.json();
+        const liveBoundaryEl = document.getElementById('manual-live-boundary');
+        if (liveBoundaryEl) {
+            if (data.success) {
+                const status = (data.status || 'unknown').toLowerCase();
+                const isStale = data.is_stale === true;
+                let color = '#ffd166'; // unknown/stale
+                let statusText = 'Unavailable';
+
+                if (isStale) {
+                    statusText = 'Current location not available';
+                    color = '#ff6b6b';
+                } else if (status === 'inside') {
+                    statusText = 'INSIDE';
+                    color = '#00ffcc';
+                } else if (status === 'outside') {
+                    statusText = 'OUTSIDE';
+                    color = '#ff6b6b';
+                }
+
+                liveBoundaryEl.innerHTML = `
+                    <span class="detail-label">Boundary</span>
+                    <span class="detail-val" style="color:${color}; text-transform:uppercase;">${statusText}</span>
+                `;
+            } else {
+                liveBoundaryEl.innerHTML = `
+                    <span class="detail-label">Boundary</span>
+                    <span class="detail-val" style="color:#ff6b6b; text-transform:uppercase;">Unavailable</span>
+                `;
+            }
+        }
+    } catch (err) {
+        console.error("Live boundary check failed:", err);
+    }
 };
 
 async function submitManualAttendance(status) {
