@@ -57,12 +57,55 @@ async function requestGpsAccess() {
     // Start continuous GPS watch
     startLocationWatch((pos, result) => {
       gpsResult = result;
-      // Note: Face enrollment check not needed on dashboard for marking flow
+      // Update Premium UI if elements exist (student_dashboard.html)
+      const statusText = document.getElementById('gps-status-text');
+      const subtext = document.getElementById('gps-subtext');
+      const distanceBadge = document.getElementById('gps-distance-badge');
+      const card = document.getElementById('gps-card-container');
+      
+      if (statusText) {
+        statusText.textContent = result.allowed ? "INSIDE BOUNDARY" : "OUTSIDE BOUNDARY";
+        statusText.style.color = result.allowed ? "var(--accent-green)" : "var(--accent-red)";
+      }
+      if (subtext) {
+        subtext.textContent = result.allowed ? "Secure connection active. You are within the campus zone." : "Warning: Outside Campus Boundary!";
+      }
+      if (distanceBadge) {
+        distanceBadge.textContent = `${result.distance.toFixed(1)}m from boundary`;
+        distanceBadge.style.display = 'block';
+      }
+      if (card) {
+        card.className = result.allowed ? "gps-boundary-card-premium inside" : "gps-boundary-card-premium outside";
+      }
+
+      // Sync with backend immediately if needed (already handled by startLocationWatch internally?)
+      // Actually startLocationWatch usually just calculates client side. 
+      // We should call the auto-verify sync here for admin visibility.
+      syncGpsWithBackend(pos.coords.latitude, pos.coords.longitude);
     });
   } catch (err) {
     if (btn) { btn.disabled = false; btn.textContent = 'Enable Location Access'; }
     if (errEl) errEl.style.display = 'block';
   }
+}
+
+async function syncGpsWithBackend(lat, lng) {
+    const user = JSON.parse(localStorage.getItem('sat_student') || localStorage.getItem('user') || '{}');
+    if (!user.student_id) return;
+    const token = localStorage.getItem('sat_token');
+    
+    try {
+        await fetch('/api/attendance/auto-verify/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+                student_id: user.student_id,
+                latitude: lat,
+                longitude: lng,
+                face_verified: false
+            })
+        });
+    } catch(e) {}
 }
 
 // ── Clock ─────────────────────────────────────────────────────

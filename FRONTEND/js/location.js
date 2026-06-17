@@ -147,7 +147,6 @@ window.saveBoundaryLocation = saveBoundaryLocation;
 window.saveSelectedLocation = saveBoundaryLocation; // Alias for different button calls
 window.confirmLocation = saveBoundaryLocation;     // Alias for different button calls
 
-// For dashboard logic if needed
 // ============================================================
 // STEP 5: BOUNDARY FIX (MAIN BUG) — EXACT CODE IMPLEMENTATION
 // ============================================================
@@ -167,3 +166,73 @@ function getDistance(lat1, lon1, lat2, lon2) {
 }
 window.haversineDistance = getDistance; // Alias to ensure existing dependencies inherit the new logic
 window.getDistance = getDistance;
+
+// ── NEW: Real-time Location Watch Implementation ─────────────
+let _locationWatchInterval = null;
+const COLLEGE = { lat: 10.9323, lng: 76.9770, radius: 50 }; // Default fallback
+
+function startLocationWatch(callback) {
+    if (_locationWatchInterval) clearInterval(_locationWatchInterval);
+
+    const check = async () => {
+        if (!navigator.geolocation) return;
+
+        navigator.geolocation.getCurrentPosition((pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            
+            // Get college location from localStorage or fallback
+            const bLat = parseFloat(localStorage.getItem('boundaryLat')) || COLLEGE.lat;
+            const bLon = parseFloat(localStorage.getItem('boundaryLng')) || COLLEGE.lng;
+            
+            const dist = getDistance(lat, lon, bLat, bLon);
+            const inside = dist <= COLLEGE.radius;
+
+            const result = {
+                allowed: inside,
+                distance: dist,
+                lat: lat,
+                lon: lon
+            };
+
+            if (callback) callback(pos, result);
+        }, (err) => {
+            console.warn("[LocationWatch] error:", err.message);
+        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
+    };
+
+    // Initial check
+    check();
+    // Periodic check every 5 seconds for dashboard/scanning
+    _locationWatchInterval = setInterval(check, 5000);
+}
+
+function stopLocationWatch() {
+    if (_locationWatchInterval) {
+        clearInterval(_locationWatchInterval);
+        _locationWatchInterval = null;
+    }
+}
+
+function getCurrentPosition() {
+    // Helper used by attendance.js
+    const lat = localStorage.getItem('lastLat');
+    const lon = localStorage.getItem('lastLon');
+    if (lat && lon) return { lat: parseFloat(lat), lon: parseFloat(lon) };
+    return null;
+}
+
+// Global exposure
+window.startLocationWatch = startLocationWatch;
+window.stopLocationWatch = stopLocationWatch;
+window.getCurrentPosition = getCurrentPosition;
+
+// Wrap getCurrentPosition to update localStorage for getLastDescriptor etc
+const originalGetPos = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
+navigator.geolocation.getCurrentPosition = function(success, error, options) {
+    originalGetPos((pos) => {
+        localStorage.setItem('lastLat', pos.coords.latitude);
+        localStorage.setItem('lastLon', pos.coords.longitude);
+        if (success) success(pos);
+    }, error, options);
+};

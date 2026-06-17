@@ -79,8 +79,19 @@ async function loadAttendanceSummary(studentId) {
     }
 }
 
+let _firstGpsFetched = false;
+
 function updateGeofenceUI() {
     if (!navigator.geolocation) return;
+
+    const statusText = document.getElementById('boundaryStatus');
+    const subtext = document.getElementById('geofence-subtext');
+    
+    // Immediately show loading state if it's the first fetch
+    if (!_firstGpsFetched) {
+        if (statusText) statusText.textContent = "CHECKING CURRENT LOCATION...";
+        if (subtext) subtext.textContent = "Requesting fresh GPS coordinates...";
+    }
 
     navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude;
@@ -105,6 +116,7 @@ function updateGeofenceUI() {
         });
         const data = await res.json();
         
+        _firstGpsFetched = true;
         console.log("BOUNDARY:", data.is_inside ? "INSIDE" : "OUTSIDE");
         renderGeofenceStatus(data.is_inside, data.distance);
 
@@ -133,7 +145,7 @@ function updateGeofenceUI() {
         }
         const visual = document.getElementById('geofence-visual');
         if (visual) visual.style.borderColor = "#ff4d4d";
-    }, { enableHighAccuracy: true });
+    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
 }
 
 async function checkFaceRegistration(studentId) {
